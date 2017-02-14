@@ -1,0 +1,12 @@
+/var/log/iotweb/iotweb.log {
+	rotate 7
+	daily
+	compress
+	size 100k
+	nocreate
+	missingok
+	postrotate
+		service iotweb restart
+	endscript
+}
+
