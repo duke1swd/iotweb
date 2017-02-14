@@ -1,0 +1,10 @@
+#
+# This file configures the ruby daemonizer
+# that is called from the init.rc systmem
+#
+app=Deviceweb.rb
+pidfile=/var/run/iotweb.pid
+chdir=/home/iotweb
+interp=rerun
+logfile=/var/log/iotweb/iotweb.log
+RBENV_VERSION=2.2.6

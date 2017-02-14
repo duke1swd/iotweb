@@ -1,0 +1,11 @@
+#
+# This is the GEM file for the IOT web server
+#
+source "https://rubygems.org"
+
+gem 'sinatra'
+gem 'mqtt'
+gem 'timeout'
+gem 'json'
+gem 'rerun'
+#gem 'cgi'

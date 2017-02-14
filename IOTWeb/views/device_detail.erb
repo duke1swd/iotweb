@@ -1,0 +1,36 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN">
+<html>
+<head>
+<title>Daniel Family IOT Portal -- Device Detail</title>
+</head>
+<body>
+<h1><strong>Device <%=device%> Detail</strong></h1>
+<table border="2">
+<tbody>
+<tr>
+<td width="125">
+<p><strong>Topic</strong></p>
+</td>
+<td width="125">
+<p><strong>Value</strong></p>
+</td>
+</tr>
+<%
+    online=false
+    listOfDevices()[device].each do |topic,value|
+    	if topic == "$online" && value == "true"
+		online=true
+	end
+%>
+	<tr>
+		<td width="125"> <%=topic%> </td>
+		<td width="125"> <%=value%> </td>
+	</tr>
+<%end%>
+</tbody>
+</table>
+<%if ! online%>
+	<p>To erase this device's stored messages click <a href=/erase/<%=CGI.escape(device)%>>here</a></p>
+<%end%>
+</body>
+</html>
