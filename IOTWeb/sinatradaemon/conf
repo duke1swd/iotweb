@@ -2,6 +2,8 @@
 # This file configures the ruby daemonizer
 # that is called from the init.rc systmem
 #
+# This runs the IOT web
+#
 app=Deviceweb.rb
 pidfile=/var/run/iotweb.pid
 chdir=/home/iotweb
