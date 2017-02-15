@@ -1,0 +1,12 @@
+#
+# This file configures the ruby daemonizer
+#  This version is for testing
+#
+# This runs the IOT web
+#
+app=Deviceweb.rb
+pidfile=/tmp/iotweb.pid
+chdir=/home/iotweb
+interp=rerun
+logfile=/tmp/iotweb.log
+RBENV_VERSION=2.2.6

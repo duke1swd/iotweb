@@ -48,12 +48,14 @@ char *myname;
 char *conf_file;
 FILE *conf;
 int verbose;
+int debug;
 
 static void
 set_defaults()
 {
 	conf_file = "/etc/iotweb/iotweb.conf";
 	verbose = 0;
+	debug = 0;
 }
 
 static void
@@ -63,6 +65,7 @@ usage(){
 	fprintf(stderr, "Usage: %s <options>\n", myname);
 	fprintf(stderr, "Options:\n");
 	fprintf(stderr, "\t-v (verbose)\n");
+	fprintf(stderr, "\t-d (debug)\n");
 	fprintf(stderr, "\t-c <config file (%s)>\n", conf_file);
 	exit(1);
 }
@@ -77,10 +80,14 @@ grok_args(int argc, char **argv)
 	errors = 0;
 	set_defaults();
 
-	while ((c = getopt(argc, argv, "c:vh")) != EOF)
+	while ((c = getopt(argc, argv, "c:vdh")) != EOF)
 	switch (c) {
 	    case 'c':
 	    	conf_file = optarg;
+		break;
+
+	    case 'd':
+	    	debug++;
 		break;
 
 	    case 'v':
@@ -92,6 +99,11 @@ grok_args(int argc, char **argv)
 	    default:
 	    	usage();
 	}
+	
+	if (debug)
+		fprintf(stderr, "%s: debug = %d\n",
+			myname,
+			debug);
 
 	conf = fopen(conf_file, "r");
 	if (conf == NULL) {
@@ -388,7 +400,7 @@ process_configuration()
 	logfile_fd = 2;
 	logfilename = kv_search("logfile");
 	if (logfilename) {
-		logfile_fd = open(logfilename, O_CREAT, 0644);
+		logfile_fd = open(logfilename, O_WRONLY | O_CREAT, 0644);
 		if (logfile_fd < 0) {
 			fprintf(stderr, "%s: cannot open log file %s for writing\n",
 				myname,
@@ -397,6 +409,7 @@ process_configuration()
 		}
 		// seek to end.
 		lseek(logfile_fd, (off_t)0, SEEK_END);
+		r = write(logfile_fd, "IOTWEB Log File Open\n", 21);
 	}
 	
 	/*
@@ -419,7 +432,11 @@ doit()
 	char *app_argv[APP_ARGS];
 	extern char **environ;
 
-	pid = fork();
+	if (debug)
+		pid = 0;
+	else
+		pid = fork();
+
 	if (pid == -1) {
 		// there was an error
 		fprintf(stderr, "%s: cannot fork child\n",
@@ -430,7 +447,8 @@ doit()
 		/*
 		 * We are the child.
 		 *
-		 * Mostly ignore errors from this point on.  We don't really have a way to deal with them.
+		 * Mostly ignore errors from this point on.
+ 		 * we don't really have a way to deal with them.
 		 */
 		setgid(gid);
 		setuid(uid);
@@ -461,6 +479,7 @@ doit()
 		/* we are the parent */
 		fprintf(pidfile, "%d\n", pid);
 		fclose(pidfile);
+		close(logfile_fd);
 	}
 }
 
