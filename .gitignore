@@ -1,0 +1,4 @@
+FIRMWARE/
+*.lock
+*.o
+daemon
