@@ -6,3 +6,6 @@ mkdir /etc/rubydaemon
 cp conf /etc/rubydaemon/iotweb.conf
 cp logrotation.d/iotweb /etc/logrotation.d to set up log rotation
 mkdir /var/log/iotweb
+
+The actual web site is developed in /home/pi/HA.  It is committed using git.
+The web site runs out of /home/iotweb.  Publish is by pulling there.
