@@ -19,7 +19,7 @@ def listOfDevices()
 		    topic,message = c.get()
 		    #puts "#{topic}: #{message}"
 		    # pull the device name out of the message topic
-		    device = topic.sub(/devices\/([a-zA-Z0-9 ]+)\/.*/, '\1')
+		    device = topic.sub(/devices\/([a-zA-Z0-9\-]+)\/.*/, '\1')
 		    if ! returnHash[device]
 		    	returnHash[device] = Hash.new
 		    end
