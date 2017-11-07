@@ -1,4 +1,5 @@
 FIRMWARE/
 *.lock
 *.o
+*.bin
 daemon
