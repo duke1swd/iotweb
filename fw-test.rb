@@ -252,6 +252,7 @@ otapublish('checksum', checksum)
 state = 'starting'
 @lastmess = nil
 clearchecksum = true
+nextpct = 5
 begin
 	c = MQTT::Client.connect(@host)
 	c.subscribe('devices/' + @dev + '/$implementation/ota/status')
@@ -282,12 +283,17 @@ begin
 			exit
 		when 'loading'
 			if status == 206
-				# QQQ to do: convert status to a % and only report every 5%.
-				puts "\t" + message
+				puts "\t" + message if @debug
+				pct = message.sub(/^[0-9]+ ([0-9]+)\/.*/, '\1').to_f /
+				    message.sub(/^[0-9]+ [0-9]+\/([0-9]+)/, '\1').to_f 
+				if pct * 100 >= nextpct
+					print "*"
+					nextpct = nextpct + 5 #print a * every 5%
+				end
 				next
 			end
 			if status == 200
-				puts "Firmware Load Successful"
+				puts "  Firmware Load Successful"
 				clean_up
 				state = 'done'
 				exit
