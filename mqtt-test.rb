@@ -7,17 +7,22 @@
 
 require 'mqtt'
 require 'timeout'
+require 'json'
 
 def listOfDevices()
 	returnHash = Hash.new
 	host = "localhost"
 	c = MQTT::Client.connect(host)
-	c.subscribe('devices/#')
+	c.subscribe('#')
 	begin
 	while true do
 		Timeout::timeout(1) do
 		    topic,message = c.get()
 		    #puts "#{topic}: #{message}"
+		    if not topic =~ /^device/
+		    	puts "bad topic #{topic}"
+			next
+		    end
 		    # pull the device name out of the message topic
 		    device = topic.sub(/devices\/([a-zA-Z0-9\-]+)\/.*/, '\1')
 		    if ! returnHash[device]
@@ -43,7 +48,16 @@ if true
 	listOfDevices.each do |device,devHash|
 		puts device
 		devHash.each do |topic,message|
-			puts "\t#{topic}:  #{message}"
+			if topic == '$implementation/config'
+				puts "\t\t#{topic}:"
+				JSON.pretty_generate(JSON.parse(message)).each_line do |line|
+					puts "\t\t\t#{line}"
+				end
+			elsif topic == '$implementation/ota/firmware'
+				puts "\t\t#{topic}:  <binary>"
+			else
+				puts "\t\t#{topic}:  #{message}"
+			end
 		end
 	end
 end
