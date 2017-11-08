@@ -44,7 +44,7 @@ def listOfDevices()
 end
 
 debug = false
-mode = 0 #unknown
+mode = nil #unknown
 lookingfordev = false
 lookingforfile = false
 dev = nil
@@ -82,15 +82,15 @@ ARGV.each do |arg|
 	end
 end
 
-if mode == 0
+if mode.nil?
 	puts "Usage: #{$0} -(l|u) [-f firmeware file] [-d device-id]"
 	exit
 end
 
 puts "Mode is #{mode}" if debug
 
-puts "File is #{filename}" if !filename.nil?
-puts "Device is #{dev}" if !dev.nil?
+puts "File is #{filename}" if !filename.nil? && debug
+puts "Device is #{dev}" if !dev.nil? && debug
 	
 allDevices = listOfDevices
 
@@ -114,6 +114,7 @@ if debug
 end
 
 # If a device was specified see if we know anything about it.
+
 if (not dev.nil?) && allDevices[dev].nil?
 	puts "Cannot find device #{dev} on MQTT"
 	exit
@@ -122,6 +123,7 @@ elsif not dev.nil?
 end
 
 # If a filename was specified, get its MD5 checksum
+
 if not filename.nil?
 	begin
 		checksum = Digest::MD5.file filename
@@ -130,4 +132,25 @@ if not filename.nil?
 		puts "Exception #{bang}"
 		exit
 	end
+end
+
+# If we've been asked for a list of devices with their firmware, print that
+if mode == 'l' and dev.nil? and filename.nil?
+	allDevices.each do |device,devHash|
+		puts "\t" + device + "\t" + devHash['$fw/checksum']
+	end
+	puts ""
+end
+
+exit if mode == 'l'
+
+# Come here to do an upgrade
+if filename.nil? or dev.nil?
+	puts "upgrade mode requires both a file and a device"
+	exit
+end
+
+if checksum == allDevices[dev]['$fw/checksum']
+	puts "Device #{dev} is already running firmware #{filename}"
+	exit
 end
