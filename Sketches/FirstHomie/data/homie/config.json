@@ -1,0 +1,26 @@
+{
+	"name": "LED Test Device",
+	device_id": "led0003",
+
+	"wifi": {
+		"ssid": "DanielFamily",
+		"password": "wephPin~Unt1"
+	},
+
+	"mqtt": {
+		"host": "192.168.1.13",
+		"port": 1883,
+		"base_topic": "devices/",
+		"auth": false,
+		"ssl": false
+	},
+
+	"ota": {
+		"enabled": true,
+		"host": "192.168.1.13",
+		"port": 1884,
+		"path": "/custom_ota"
+		"auth": false,
+		"ssl": false
+	}
+}
