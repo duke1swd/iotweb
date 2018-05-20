@@ -1,0 +1,17 @@
+{
+  "name": "Alarm State Sensor",
+  "device_id": "alarm-state-0001",
+  "wifi": {
+    "ssid": "DanielIOT",
+    "password": "+dt8ynpFJQ;eu_tbhN"
+  },
+  "mqtt": {
+    "host": "192.168.2.13",
+    "port": 1883,
+    "base_topic": "devices/",
+    "auth": false
+  },
+  "ota": {
+    "enabled": true
+  }
+}
