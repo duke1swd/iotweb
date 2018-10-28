@@ -13,6 +13,8 @@
 //
 // Version 0.3 adds debug mode, to help us debug the LED hardware
 // and the alarm software, it simply copies the inputs to the LED outputs.
+//  Hold Pin D6 low at power up to enable debug
+//  Hold an input pin low to light up the corresponding LED
 //
 
 #include <Homie.h>
@@ -22,8 +24,8 @@
 
 // Note: all of these LEDs are on when LOW, off when HIGH
 static const uint8_t PIN_LED0 = D4; // the WeMos blue LED
-static const uint8_t PIN_LED1 = D3; // a white status LED
-static const uint8_t PIN_LED2 = D8; // another white status LED
+static const uint8_t PIN_LED1 = D1; // a white status LED
+static const uint8_t PIN_LED2 = D7; // another white status LED
 
 
 // These input pins are driven low by an open collector on the alarm.
@@ -45,6 +47,7 @@ bool blinking;
 unsigned char alarm_status;
 
 bool debug_mode;
+int last_debug_report_time;
 
 // The LED is an output node, provides external control of the blue LED on the Wemos D1
 HomieNode lightNode("led", "switch");   // ID is "led", which is unique within this device.  Type is "switch"
@@ -156,15 +159,19 @@ void setup() {
   delay(2000);
 
   // set up the serial port
-  Serial.begin(115200);
-  Serial.println("Alarm State Sensor\n");
+  Serial.begin(74880);
+  Serial.println("Alarm State Sensor");
+  Serial.println(FIRMWARE_VERSION);
 
   // If we are commanded to debug, the skip _all_ the HOMIE stuff
   debug_mode = false;
   if (!digitalRead(PIN_DEBUG)) {
+    Serial.println("Entering debug mode");
     debug_mode = true;
+    last_debug_report_time = 0;
     return;
   }
+  Serial.println("Entering normal mode");
 
   Homie_setFirmware(FIRMWARE_NAME, FIRMWARE_VERSION);
   Homie.setSetupFunction(setupHandler).setLoopFunction(loopHandler);
@@ -179,7 +186,18 @@ void setup() {
 
 
 void loop() {
+  int v;
+  
   if (debug_mode) {
+    if (millis() - last_debug_report_time > 1000) {
+      last_debug_report_time = millis();
+      v = digitalRead(PIN_INPUT17);
+      Serial.print(v);
+      v = digitalRead(PIN_INPUT18);
+      Serial.println(v);
+    }
+    // in debug mode if you ground one of the input lines we turn on
+    // the corresponding LED
     if (digitalRead(PIN_INPUT17))
       digitalWrite(PIN_LED1, HIGH);
     else
