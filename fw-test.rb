@@ -16,6 +16,7 @@ require 'digest'
 
 @host = "localhost"
 @maxfilesize = 512 * 1024 * 1024	# half a gigabyte
+#firmwareat = ""
 
 def listOfDevices()
 	returnHash = Hash.new
@@ -26,6 +27,11 @@ def listOfDevices()
 		Timeout::timeout(1) do
 		    topic,message = c.get()
 		    #puts "#{topic}: #{message}"
+
+
+		    # ignore any broadcast messages lurking about
+		    next if /\$broadcast/ =~ topic
+
 		    # pull the device name out of the message topic
 		    device = topic.sub(/devices\/([a-zA-Z0-9\-]+)\/.*/, '\1')
 		    if ! returnHash[device]
@@ -48,7 +54,8 @@ end
 
 def otapublish(key, message)
 	topic = 'devices/' + @dev + '/$implementation/ota/' + key
-	puts "Publishing #{topic} <= #{message}" if @debug
+	m = (/firmware/ =~ topic)? 'binary': message
+	puts "Publishing #{topic} <= #{m}" if @debug
 	begin
 		MQTT::Client.connect(@host) do |c|
 			c.publish(topic, message, true)
@@ -65,15 +72,14 @@ end
 # Get rid of old persistent OTA messages
 #
 def clean_up
-	otapublish('firmware', "")
-	otapublish('checksum', "")
+	otapublish(@firmwareat, "")
 	otapublish('status', "")
 end
 
 #
 # read the firmware file and publish it
 #
-def publish_firmware
+def publish_firmware(checksum)
 	File.open(@filename, "r") do |f|
 		size = f.size
 		if size > @maxfilesize
@@ -81,7 +87,8 @@ def publish_firmware
 			exit
 		end
 		firmware = f.read(size)
-		otapublish('firmware', firmware)
+		@firmwareat = 'firmware/' + checksum.hexdigest
+		otapublish(@firmwareat, firmware)
 	end
 end
 	
@@ -150,7 +157,7 @@ if @debug
 				JSON.pretty_generate(JSON.parse(message)).each_line do |line|
 					puts "\t\t\t#{line}"
 				end
-			elsif topic == '$implementation/ota/firmware'
+			elsif /firmware/ =~ topic
 				puts "\t\t#{topic}:  <binary>"
 			else
 				puts "\t\t#{topic}:  #{message}"
@@ -166,7 +173,10 @@ if (not @dev.nil?) && allDevices[@dev].nil?
 	puts "Cannot find device #{@dev} on MQTT"
 	exit
 elsif not @dev.nil?
-	puts "Device #{@dev} firmware is #{allDevices[@dev]['$fw/checksum']}"
+	puts "Device #{@dev} firmware:"
+	puts "\tname:\t\t#{allDevices[@dev]['$fw/name']}"
+	puts "\tversion:\t#{allDevices[@dev]['$fw/version']}"
+	puts "\tchecksum:\t#{allDevices[@dev]['$fw/checksum']}"
 end
 
 # If a filename was specified, get its MD5 checksum
@@ -189,7 +199,9 @@ end
 # If we've been asked for a list of devices with their firmware, print that
 if mode == 'l' and @dev.nil? and @filename.nil?
 	allDevices.each do |device,devHash|
-		puts "\t" + device + "\t" + devHash['$fw/checksum']
+		c = devHash['$fw/checksum']
+		c = "unknown" if c.nil?
+		puts "\t" + device + "\t" + c
 	end
 	puts ""
 end
@@ -239,19 +251,16 @@ if not status.nil?
 end
 
 #
-# Kick things off by publishing the MD5 digest of the firmware we wish
-# to upload.
+# Kick things off by publishing the firmware to upload.
 #
 
-otapublish('checksum', checksum)
+publish_firmware(checksum)
 
 #
-# This loop waits on status messages, and depending on message and state,
+# This loop waits on status messages, and depending on message
 # does things.
 #
-state = 'starting'
 @lastmess = nil
-clearchecksum = true
 nextpct = 5
 begin
 	c = MQTT::Client.connect(@host)
@@ -262,59 +271,66 @@ begin
 			topic,message = c.get()
 		next if message == @lastmess
 		@lastmess = message
-		puts "State = #{state}: got status message " + message if @debug
+		puts "\tGot status message " + message if @debug
 
 		status = message.sub(/^([0-9]+).*/, '\1').to_i
 		puts "Status code is #{status}" if @debug
 
-		if clearchecksum
-			otapublish('checksum', "")
-			clearchecksum = false
+		if status == 202
+			puts "Firmware Accepted"
+			puts "\t" + message if @debug
+			next
 		end
-
-		case state
-		when 'starting'
-			if status == 202
-				state = 'loading'
-				publish_firmware
-				next
+		if status == 206
+			puts "\t" + message if @debug
+			pct = message.sub(/^[0-9]+ ([0-9]+)\/.*/, '\1').to_f /
+			    message.sub(/^[0-9]+ [0-9]+\/([0-9]+)/, '\1').to_f 
+			if pct * 100 >= nextpct
+				print "*"
+				nextpct = nextpct + 5 #print a * every 5%
 			end
-			puts "Initial OTA status is #{message}.  Aborting"
-			exit
-		when 'loading'
-			if status == 206
-				puts "\t" + message if @debug
-				pct = message.sub(/^[0-9]+ ([0-9]+)\/.*/, '\1').to_f /
-				    message.sub(/^[0-9]+ [0-9]+\/([0-9]+)/, '\1').to_f 
-				if pct * 100 >= nextpct
-					print "*"
-					nextpct = nextpct + 5 #print a * every 5%
-				end
-				next
-			end
-			if status == 200
-				puts "  Firmware Load Successful"
-				clean_up
-				state = 'done'
-				exit
-			end
-			puts "Initial OTA status is #{message}.  Aborting"
-			exit
-		else
-			puts "Internal error unknow state #{state}"
+			next
+		end
+		if status == 200
+			puts "  Firmware Load Successful"
+			clean_up
 			exit
 		end
+		if status == 304
+			puts "Attempted to upload already running firmware.  Aborting."
+			clean_up
+			exit
 		end
+		if status == 400
+			puts "Device reports OTA Bad Checksum or Firmware.  Aborting."
+			puts message
+			clean_up
+			exit
+		end
+		if status == 403
+			puts "OTA not enabled on this device.  Aborting."
+			clean_up
+			exit
+		end
+		if status == 500
+			puts "Device reports internal error.  Aborting."
+			puts message
+			clean_up
+			exit
+		end
+		puts "Initial OTA status is #{message}.  Aborting"
+		clean_up
+		exit
 	    end
+	end
 	rescue Timeout::Error
 	    puts "Timeout Error during upload"
 	    exit
 	end
 
+rescue exit
 rescue Exception => bang
-	if state != 'done'
-		puts "Exception in upload state machine when state = #{state}" if @debug
-		puts "Exception #{bang}"
-	end
+	puts "Exception in upload state machine" if @debug
+	puts "Exception #{bang}"
 	exit
 end
