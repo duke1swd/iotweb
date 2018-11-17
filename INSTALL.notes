@@ -12,9 +12,10 @@ Installing the sinatra-based web site to control things:
 	The web site runs out of /home/iotweb.  Publish is by pulling there.
 
 
-Installing the timeservice daemon
+Installing the timeservice daemon (as root):
 	cp daemons/init.d/iottimeservice /etc/init.d
 	cp daemons/iottimeservice.conf /etc/rubydaemon/iottimeservice.conf
 	cp daemons/logrotation.d/iottimeservice /etc/logrotation.d
 	mkdir /var/log/iottimeservice
-service start iottimeservice
+	update-rc.d iottimeservice defaults
+	service start iottimeservice

@@ -9,7 +9,7 @@
 # Short-Description:	Daniel family IOT network time service
 # Description: 
 #  This is a daemon that provides time services to the daniel
-#  family IOT devices.  The daemon simple publishes a timestamp
+#  family IOT devices.  The daemon simply publishes a timestamp
 #  as an mqtt message from time to time
 ### END INIT INFO
 
