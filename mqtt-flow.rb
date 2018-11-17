@@ -24,7 +24,11 @@ while true
 				puts ""
 				nlflag = false
 			end
-			puts "#{topic}: #{message}"
+			if message.include?("firmware")
+				puts "#{topic}: (suppresed)"
+			else
+				puts "#{topic}: #{message}"
+			end
 		end
 	rescue Timeout::Error
 		nlflag = true
