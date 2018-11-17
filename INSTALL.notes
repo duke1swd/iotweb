@@ -1,11 +1,20 @@
 Installing this project sprinkles things everywhere.
 
-cp IOTWeb/sinatradaemon/daemon /usr/sbin/rubydaemon to install the ruby daemon
-cp IOTWeb/init.d/iotweb /etc/init.d to set up the service
-mkdir /etc/rubydaemon
-cp IOTWeb/sinatradaemon/conf /etc/rubydaemon/iotweb.conf
-cp IOTWeb/logrotation.d/iotweb /etc/logrotation.d to set up log rotation
-mkdir /var/log/iotweb
+Installing the sinatra-based web site to control things:
+	cp IOTWeb/sinatradaemon/daemon /usr/sbin/rubydaemon to install the ruby daemon
+	cp IOTWeb/init.d/iotweb /etc/init.d to set up the service
+	mkdir /etc/rubydaemon
+	cp IOTWeb/sinatradaemon/conf /etc/rubydaemon/iotweb.conf
+	cp IOTWeb/logrotation.d/iotweb /etc/logrotation.d to set up log rotation
+	mkdir /var/log/iotweb
 
-The actual web site is developed in /home/pi/HA.  It is committed using git.
-The web site runs out of /home/iotweb.  Publish is by pulling there.
+	The actual web site is developed in /home/pi/HA.  It is committed using git.
+	The web site runs out of /home/iotweb.  Publish is by pulling there.
+
+
+Installing the timeservice daemon
+	cp daemons/init.d/iottimeservice /etc/init.d
+	cp daemons/iottimeservice.conf /etc/rubydaemon/iottimeservice.conf
+	cp daemons/logrotation.d/iottimeservice /etc/logrotation.d
+	mkdir /var/log/iottimeservice
+service start iottimeservice

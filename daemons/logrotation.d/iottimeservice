@@ -1,0 +1,12 @@
+/var/log/iottimeserice/iottimeserice.log {
+	rotate 7
+	daily
+	compress
+	size 100k
+	nocreate
+	missingok
+	postrotate
+		service iottimeserice restart
+	endscript
+}
+
