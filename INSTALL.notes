@@ -1,10 +1,10 @@
 Installing this project sprinkles things everywhere.
 
-cp daemon /usr/sbin/rubydaemon to install the ruby daemon
-cp init.d/iotweb /etc/init.d to set up the service
+cp IOTWeb/sinatradaemon/daemon /usr/sbin/rubydaemon to install the ruby daemon
+cp IOTWeb/init.d/iotweb /etc/init.d to set up the service
 mkdir /etc/rubydaemon
-cp conf /etc/rubydaemon/iotweb.conf
-cp logrotation.d/iotweb /etc/logrotation.d to set up log rotation
+cp IOTWeb/sinatradaemon/conf /etc/rubydaemon/iotweb.conf
+cp IOTWeb/logrotation.d/iotweb /etc/logrotation.d to set up log rotation
 mkdir /var/log/iotweb
 
 The actual web site is developed in /home/pi/HA.  It is committed using git.

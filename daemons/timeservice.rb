@@ -11,8 +11,7 @@ require 'mqtt'
 @interval = 60	# how often to post
 @epoch = Time.new(2018,11,1).to_i
 
-def publish(key, value)
-	topic = 'environment/' + key
+def publish(topic, value)
 	puts "Publishing #{topic} <= #{value}" if @debug
 	begin
 		MQTT::Client.connect(@host) do |c|
@@ -28,6 +27,7 @@ end
 
 while true
 	t = Time.new()
-	publish("IOTtime", t.to_i - @epoch)
+	publish("environment/IOTtime", t.to_i - @epoch)
+	publish("devices/$broadcast/IOTtime", t.to_i - @epoch)
 	sleep(@interval)
 end
