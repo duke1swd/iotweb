@@ -46,8 +46,9 @@ const int PIN_BUTTON = 13;
 static bool on;			// state of the relay
 static const char * reason;	// one of the reason codes (above)
 static bool rising;		// true when we've detected a button push but have not yet done anything with it.
+static bool buttonState;	// set true by pressing button.  Set false by external entity.
 
-static int led_can_change;	// False when we are not to blink LED.  Mostly because some non-standard blinking going on.
+static long led_can_change;	// False when we are not to blink LED.  Mostly because some non-standard blinking going on.
 
 // only update properties when connected.
 // code that may run when not connected sets these variables to tell the
@@ -57,24 +58,27 @@ static boolean queued_reason;
 static boolean queued_ton;
 static boolean queued_toff;
 static boolean queued_time_last_change;
+static boolean queued_remote_set;
+static boolean desired_remote_set;
 
 // Schedule stuff
-int	time_to_turn_on;	// set to zero if not in use
-int	time_to_turn_off;	// set to zero if not in use
-int	time_base;		// Current time is time_base + millis()/1000
-int	time_last_change;	// When did we last change?
+long	time_to_turn_on;	// set to zero if not in use
+long	time_to_turn_off;	// set to zero if not in use
+long	time_base;		// Current time is time_base + millis()/1000
+long	queued_time_base;	// push set of time base out of ISR
+long	time_last_change;	// When did we last change?
 
 // Debounce the input button
 Bounce debouncer = Bounce(); // Instantiate a Bounce object
 
-HomieNode outletNode("outlet", "switch");
+// This node is controls the relay
+HomieNode outletNode("outlet", "relay");
 
-// The state node is an input node that tells the world the state of the relay,
-// and the reason for that state.
-HomieNode outletStateNode("outlet-state", "sensor");
+// This node watches the push button
+HomieNode buttonNode("button", "button");
 
 /* convert integer to string */
-static char *i_to_s(int i)
+static char *l_to_s(long i)
 {
 	static char buf[36];
 
@@ -82,98 +86,80 @@ static char *i_to_s(int i)
 	return buf;
 }
 
-// Handle changes to the "on" property.
+/****
+ *
+ * Message Handlers
+ *
+ * NOTE: the message handlers are called asynchronously from the TCP/IP upcal.
+ * We assume this means they may be called from an interrupt at any time.
+ * For this reason their function is mostly to record stuff for later
+ * processing in the loop code.
+ *
+ ****/
+
+// Broadcast handler.  Useful for time base.
+bool broadcastHandler(const String& level, const String& value) {
+  // Only broadcast we know about it IOTtime.
+  if (level == "IOTtime") {
+	long t = value.toInt();
+
+	if (t < 0) return false;
+
+	queued_time_base = t - millis()/1000;
+	return true;
+  }
+  return false;
+}
+
+// Handle "on" property messages
 bool outletOnHandler(const HomieRange& range, const String& value) {
+
+  // If we don't understand the value then we didn't handle the message
   if (value != "true" && value != "false") return false;
 
   bool desired = (value == "true");
-  if (desired == on) return true;
+  if (desired != on) {
+	  desired_remote_set = desired;
+	  queued_remote_set = true;
+  }
 
-  on = desired;
-  outletStateNode.setProperty("state").send(on? "on": "off");
+  // Message handled
+  return true;
+}
 
-  reason = REASON_REMOTE;
-  outletStateNode.setProperty("reason").send(reason);
+// Handle "time-on" messages
+bool outletTOnHandler(const HomieRange& range, const String& value) {
+  long t = value.toInt();
 
-  time_last_change = time_base + millis()/1000;
-  outletStateNode.setProperty("time-last-change").send(i_to_s(time_last_change));
+  if (t < 0) return false;
 
-  Homie.getLogger() << "Outlet is " << (on ? "on" : "off") << endl;
+  time_to_turn_on = t;
+  queued_ton = true;
+  return true;
+}
 
-  digitalWrite(PIN_RELAY, on ? HIGH : LOW);
+// Handle "time-off" messages
+bool outletTOffHandler(const HomieRange& range, const String& value) {
+  long t = value.toInt();
+
+  if (t < 0) return false;
+
+  time_to_turn_off = t;
+  queued_toff = true;
+  return true;
+}
+
+// Nothing to do when someone clears this state.
+bool buttonSetHandler(const HomieRange& range, const String& value) {
+  // If we don't understand the value then we didn't handle the message
+  if (value != "true" && value != "false") return false;
+
+  buttonState = (value == "true");
 
   return true;
 }
 
-// Handle requests to schedule an turn-on time
-//bool outletTOnHandler(const Homie
 
-void onHomieEvent(const HomieEvent& event) {
-  switch(event.type) {
-    case HomieEventType::STANDALONE_MODE:
-      // Do whatever you want when standalone mode is started
-      connected = false;
-      break;
-    case HomieEventType::CONFIGURATION_MODE:
-      // Do whatever you want when configuration mode is started
-      connected = false;
-      break;
-    case HomieEventType::NORMAL_MODE:
-      // Do whatever you want when normal mode is started
-      connected = false;
-      break;
-    case HomieEventType::OTA_STARTED:
-      // Do whatever you want when OTA is started
-      connected = false;
-      break;
-    case HomieEventType::OTA_PROGRESS:
-      // Do whatever you want when OTA is in progress
-
-      // You can use event.sizeDone and event.sizeTotal
-      connected = false;
-      break;
-    case HomieEventType::OTA_FAILED:
-      // Do whatever you want when OTA is failed
-      connected = true;
-      break;
-    case HomieEventType::OTA_SUCCESSFUL:
-      // Do whatever you want when OTA is successful
-      connected = true;
-      break;
-    case HomieEventType::ABOUT_TO_RESET:
-      // Do whatever you want when the device is about to reset
-      connected = false;
-      break;
-    case HomieEventType::WIFI_CONNECTED:
-      // Do whatever you want when Wi-Fi is connected in normal mode
-
-      // You can use event.ip, event.gateway, event.mask
-      break;
-    case HomieEventType::WIFI_DISCONNECTED:
-      // Do whatever you want when Wi-Fi is disconnected in normal mode
-
-      // You can use event.wifiReason
-      break;
-    case HomieEventType::MQTT_READY:
-      // Do whatever you want when MQTT is connected in normal mode
-      connected = true;
-      break;
-    case HomieEventType::MQTT_DISCONNECTED:
-      // Do whatever you want when MQTT is disconnected in normal mode
-
-      // You can use event.mqttReason
-      connected = false;
-      break;
-    case HomieEventType::MQTT_PACKET_ACKNOWLEDGED:
-      // Do whatever you want when an MQTT packet with QoS > 0 is acknowledged by the broker
-
-      // You can use event.packetId
-      break;
-    case HomieEventType::READY_TO_SLEEP:
-      // After you've called `prepareToSleep()`, the event is triggered when MQTT is disconnected
-      break;
-  }
-}
 
 /*
  * This code called once to set up, but only after completely connected.
@@ -182,6 +168,7 @@ void setupHandler() {
   // turn on blue LED for 2 seconds
   digitalWrite(PIN_LED, HIGH);
   led_can_change = millis() + 2000;
+  connected = true;
 }
 
 void setup() {
@@ -199,25 +186,33 @@ void setup() {
   pinMode(PIN_RELAY, OUTPUT);
   pinMode(PIN_LED, OUTPUT);
   digitalWrite(PIN_RELAY, LOW);
+  time_base = 0;
+  queued_time_base = 0;
   on = false;
+  buttonState = false;
   reason = REASON_BOOT;
   queued_reason = true;
+  time_to_turn_on = 0;
   queued_ton = true;
+  time_to_turn_off = 0;
   queued_toff = true;
   time_last_change = 0;
   queued_time_last_change = true;
+  queued_remote_set = false;
   digitalWrite(PIN_LED, LOW);
 
   Homie_setFirmware(FIRMWARE_NAME, FIRMWARE_VERSION);
   Homie.setSetupFunction(setupHandler).setLoopFunction(loopHandler);
-  Homie.onEvent(onHomieEvent); 
 
   outletNode.advertise("on").settable(outletOnHandler);
-  outletNode.advertise("state");
   outletNode.advertise("reason");
   outletNode.advertise("time-on").settable(outletTOnHandler);
   outletNode.advertise("time-off").settable(outletTOffHandler);
   outletNode.advertise("time-last-change");
+
+  buttonNode.advertise("set").settable(buttonSetHandler);
+
+  Homie.setBroadcastHandler(broadcastHandler);
 
   Homie.setup();
 }
@@ -225,39 +220,73 @@ void setup() {
 /*
  * This code is called once per loop(), but only
  * when connected to WiFi and MQTT broker
+ * All queued state changes are relayed to Homie
+ *
  */
 void loopHandler() {
 
-  if (rising) {
-    rising = false;
-  }
+  // If we are here, then by definition we are connected.
+  connected = true;
 
+  // If we need to update the time base, block interrupts and do it here.
+  time_base = queued_time_base;
+
+  // If the base level code made changes, send that
+  // info to Homie
   if (queued_reason) {
     queued_reason = false;
-    outletStateNode.setProperty("state").send(on? "on": "off");
-    outletStateNode.setProperty("reason").send(reason);
+    outletNode.setProperty("on").send(on? "on": "off");
+    outletNode.setProperty("reason").send(reason);
   }
 
   if (queued_ton) {
     queued_ton = false;
-    outletStateNode.setProperty("time-on").send("");
+    outletNode.setProperty("time-on").send(l_to_s(time_to_turn_on));
   }
 
   if (queued_toff) {
     queued_toff = false;
-    outletStateNode.setProperty("time-off").send("");
+    outletNode.setProperty("time-off").send(l_to_s(time_to_turn_off));
   }
 
   if (queued_time_last_change) {
     queued_time_last_change = false;
-    outletStateNode.setProperty("time-last-change").send(i_to_s(time_last_change));
+    if (time_base > 0)
+      outletNode.setProperty("time-last-change").send(l_to_s(time_last_change));
+  }
+
+  // Handle local button press
+  if (rising) {
+    rising = false;
+    if (!buttonState) {
+      buttonState = true;
+      buttonNode.setProperty("set").send("true");
+    }
   }
 }
 
+/*
+ * This code runs repeatedly, whether connected to not.
+ *
+ * This code handles all scheduled events.
+ * When not connected,it handles button press locally.
+ * Notifications to the Homie system are queued to
+ * be handled when connected.
+ */
 void loop() {
-  int now;
+  long now;
+  long t = millis();
 
-  now = time_base + millis()/1000;
+  now = time_base + t/1000;
+
+  // Process commands we received through Homie
+  if (queued_remote_set) {
+	queued_remote_set = false;
+  	on = desired_remote_set;
+	reason = REASON_REMOTE;
+	queued_reason = true;
+	queued_time_last_change = true;
+  }
 
   // Process schedule events
   if (on &&
@@ -287,13 +316,16 @@ void loop() {
   }
 
   // Process push button
+  // Note that if we get two rising edges before
+  // Homie does anything with it, we assume we are not connected.
   debouncer.update(); // Update the Bounce instance
   if (debouncer.rose()) {
-	if (!connected) {
+	if (!connected || rising) {
+		rising = false;
 		on = !on;
 		reason = REASON_LOCAL;
 		queued_reason = true;
-		time_last_change = time_base + millis()/1000;
+		time_last_change = now;
 		queued_time_last_change = true;
 	} else
 		rising = true;
@@ -301,8 +333,8 @@ void loop() {
 
   // Push any local-mode changes in relay state to the hardware
   digitalWrite(PIN_RELAY, on ? HIGH : LOW);
-  int t = millis();
 
+  // This section controls blinking our current state on the LED.
   if (t > led_can_change) {
     // blink 1 HZ, 5% cycle when connected, 0.2HZ 5% when not
     if (!connected)
@@ -310,5 +342,8 @@ void loop() {
     digitalWrite(PIN_LED, ((t/50)%20 == 0)? HIGH: LOW); 
   }
 
+  // Set connected = false here.  If we get to the 
+  // Homie loop handler it will be set to true.
+  connected = false;
   Homie.loop();
 }
