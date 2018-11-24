@@ -20,7 +20,7 @@
 #include <Homie.h>
 
 #define FIRMWARE_NAME     "alarm-state"
-#define FIRMWARE_VERSION  "0.3.0"
+#define FIRMWARE_VERSION  "0.3.1"
 
 // Note: all of these LEDs are on when LOW, off when HIGH
 static const uint8_t PIN_LED0 = D4; // the WeMos blue LED
@@ -69,6 +69,9 @@ bool lightOnHandler(const HomieRange& range, const String& value) {
     digitalWrite(PIN_LED2, LOW); // turn on
   } else {
     blink_state = 0;
+    blinking = false;
+    digitalWrite(PIN_LED1, HIGH); // turn off
+    digitalWrite(PIN_LED2, HIGH); // turn off
   }
   lightNode.setProperty("on").send(value);
   Homie.getLogger() << "Alarm State Sensor LED set " << (on ? "on" : "off") << endl;
@@ -117,6 +120,7 @@ void blinkHandler() {
   
   if (blinking && blink_state == 0) {
       lightNode.setProperty("on").send("false");
+      lightNode.setProperty("on/set").send("false");
       blinking = false;
       digitalWrite(PIN_LED1, HIGH); // turn off
       digitalWrite(PIN_LED2, HIGH); // turn off
