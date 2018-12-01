@@ -20,7 +20,7 @@
 #include <Homie.h>
 
 #define FIRMWARE_NAME     "alarm-state"
-#define FIRMWARE_VERSION  "0.3.1"
+#define FIRMWARE_VERSION  "0.3.2"
 
 // Note: all of these LEDs are on when LOW, off when HIGH
 static const uint8_t PIN_LED0 = D4; // the WeMos blue LED
@@ -184,6 +184,7 @@ void setup() {
   lightNode.advertise("on").settable(lightOnHandler);
   alarmStateNode.advertise("state");
   alarmStateNode.advertiseRange("rawstate", 0, 3);
+  Homie.disableLedFeedback(); // we want to control the LED
   
   Homie.setup();
 }
