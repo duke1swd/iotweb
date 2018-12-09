@@ -35,6 +35,7 @@ end
 def callTest()
 	@registeredTests.each do |t| 
 		if {test_new: true, test_running: true}[t[:state]]
+			puts "Running test #{t[:test].name()}" if $verbose and t[:state] == :test_new
 			if (t[:state] = t[:test].run(@stateHash)) == :test_running
 				return false
 			end

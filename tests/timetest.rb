@@ -11,6 +11,10 @@ def initialize
 	@btime = 0
 end
 
+def name
+	return "Timetest"
+end
+
 def run(stateHash)
 	if Time.new().to_i > @endTime
 		print "TimeTest FAILED: no update within 2 minutes\n"
