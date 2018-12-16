@@ -6,9 +6,10 @@
 require "./iotstate.rb"
 require "./timetest.rb"
 require "./alarmstate.rb"
+require "./outlet.rb"
 
 $verbose = true
-$debug = false
+$debug = true
 
 def passed(testname)
 	print  "\033[1;32mPASSED\033[0m\t#{testname}";
@@ -23,7 +24,7 @@ def publish(key, message)
 	puts "Publishing #{key} <= #{m}" if $debug
 	begin
 		MQTT::Client.connect($host) do |c|
-			c.publish(key, message, true)
+			c.publish(key, message, false)	# publish but do not retain
 		end
 
 	rescue Exception => bang
@@ -36,6 +37,7 @@ end
 $host = "localhost"
 t = IOTState.new($host)
 #t.register(Timetest.new())
-t.register(AlarmState.new())
+#t.register(AlarmState.new())
+t.register(Outlet.new())
 
 t.run()

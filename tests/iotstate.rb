@@ -68,8 +68,9 @@ def run()
 				end
 
 				# get the rest of the topic, including sub topics.
-				deviceTopic = topic.sub(/devices\/[^\\]*\/(.*)/, '\1')
+				deviceTopic = topic.sub(/devices\/[^\/]*\/(.*)/, '\1')
 				@stateHash[device][deviceTopic] = message
+				# puts "device = #{device}  deviceTopic = #{deviceTopic}  message = #{message}" if $debug
 			end
 		end
 	    rescue Timeout::Error
