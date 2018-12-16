@@ -22,7 +22,7 @@
 #include <Homie.h>
 
 #define FIRMWARE_NAME     "outlet-control-WiOn"
-#define FIRMWARE_VERSION  "0.3.0"
+#define FIRMWARE_VERSION  "0.3.5"
 
 /*
  * Reason codes.
@@ -210,7 +210,7 @@ void setup() {
   outletNode.advertise("time-off").settable(outletTOffHandler);
   outletNode.advertise("time-last-change");
 
-  buttonNode.advertise("set").settable(buttonSetHandler);
+  buttonNode.advertise("button").settable(buttonSetHandler);
 
   Homie.setBroadcastHandler(broadcastHandler);
 
@@ -235,7 +235,7 @@ void loopHandler() {
   // info to Homie
   if (queued_reason) {
     queued_reason = false;
-    outletNode.setProperty("on").send(on? "on": "off");
+    outletNode.setProperty("on").send(on? "true": "false");
     outletNode.setProperty("reason").send(reason);
   }
 
@@ -260,7 +260,7 @@ void loopHandler() {
     rising = false;
     if (!buttonState) {
       buttonState = true;
-      buttonNode.setProperty("set").send("true");
+      buttonNode.setProperty("button").send("true");
     }
   }
 }
@@ -286,6 +286,7 @@ void loop() {
 	reason = REASON_REMOTE;
 	queued_reason = true;
 	queued_time_last_change = true;
+	time_last_change = now;
   }
 
   // Process schedule events
