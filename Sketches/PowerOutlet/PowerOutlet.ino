@@ -16,13 +16,13 @@
  *   Powers up off.
  *   Turns on for 2 seconds when we connect to the WiFi and to the MQTT broker
  *   Blinks 50 ms on at 1 HZ when connected.
- *   Future versions will have a slower blink when not connected.
+ *   Blinks 250 ms on at 1/5 HZ when not connected
  */
 #include <Bounce2.h>
 #include <Homie.h>
 
 #define FIRMWARE_NAME     "outlet-control-WiOn"
-#define FIRMWARE_VERSION  "0.3.5"
+#define FIRMWARE_VERSION  "0.3.7"
 
 /*
  * Reason codes.
@@ -214,6 +214,9 @@ void setup() {
 
   Homie.setBroadcastHandler(broadcastHandler);
 
+  Homie.disableLedFeedback(); // allow this code to handle LED
+
+
   Homie.setup();
 }
 
@@ -340,7 +343,7 @@ void loop() {
     // blink 1 HZ, 5% cycle when connected, 0.2HZ 5% when not
     if (!connected)
     	t /= 5;
-    digitalWrite(PIN_LED, ((t/50)%20 == 0)? HIGH: LOW); 
+    digitalWrite(PIN_LED, ((t/50)%20 != 0)? HIGH: LOW); 
   }
 
   // Set connected = false here.  If we get to the 
