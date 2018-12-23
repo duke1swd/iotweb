@@ -11,10 +11,12 @@
 
 #include <Adafruit_Sensor.h>
 #include <Adafruit_TSL2561_U.h>
+#include <DHT.h>
+#include <DHT_U.h>
 #include <Homie.h>
 
 #define FIRMWARE_NAME     "env-sense"
-#define FIRMWARE_VERSION  "0.1.2"
+#define FIRMWARE_VERSION  "0.2.0"
 
 
 /*
@@ -23,6 +25,7 @@
 const int PIN_SCL = D1;
 const int PIN_SDA = D2;
 const int PIN_LED = 2;
+const int PIN_DHT = D3;
 
 /*
  * Misc globals
@@ -33,20 +36,19 @@ long last_light_time;
 long published_light_time;
 int light;
 const long light_period = 10;	// sample every 10 seconds
+float temp;
+float humidity;
+long last_temp_time;
+long published_temp_time;
+const long temp_period = 10;	// sample every 10 seconds
 
 Adafruit_TSL2561_Unified tsl = Adafruit_TSL2561_Unified(TSL2561_ADDR_FLOAT, 12345);
-
+#define DHTTYPE DHT22   // DHT 22  (AM2302) type of temp/humidity sensor we are using
+DHT dht(PIN_DHT, DHTTYPE);
 
 HomieNode luxNode("lux", "sensor");
-
-/* convert integer to string */
-static char *l_to_s(long i)
-{
-	static char buf[36];
-
-	itoa(i, buf, 10);
-	return buf;
-}
+HomieNode tempNode("temp", "sensor");
+HomieNode humidityNode("humidity", "sensor");
 
 void configureSensor(void)
 {
@@ -89,7 +91,9 @@ bool broadcastHandler(const String& level, const String& value) {
  */
 void setupHandler() {
   published_light_time = 0;
+  published_temp_time = 0;
   luxNode.setProperty("unit").send("lux");
+  tempNode.setProperty("unit").send("F");
 }
 
 void setup() {
@@ -100,6 +104,7 @@ void setup() {
   Serial << endl << endl;
 
   configureSensor();
+  dht.begin();
   last_light_time = 0;
 
   time_base = 0;
@@ -110,6 +115,12 @@ void setup() {
   luxNode.advertise("lux");
   luxNode.advertise("unit");
   luxNode.advertise("time-last-update");
+  tempNode.advertise("temp");
+  tempNode.advertise("unit");
+  tempNode.advertise("time-last-update");
+  humidityNode.advertise("humidity");
+  humidityNode.advertise("time-last-update");
+  
 
   Homie.setBroadcastHandler(broadcastHandler);
 
@@ -128,6 +139,16 @@ static int getLight()
   return event.light;
 }
 
+static float getTemp()
+{
+  return dht.readTemperature(true);
+}
+
+static float getHumidity()
+{
+  return dht.readHumidity();
+}
+
 static void processLight()
 {
   if (now - last_light_time >= light_period) {
@@ -136,18 +157,34 @@ static void processLight()
   }
 }
 
+static void processTH()
+{
+  if (now - last_temp_time >= temp_period) {
+    temp = getTemp();
+    humidity = getHumidity();
+    last_temp_time = now;
+  }
+}
+
+
 /*
  * This code is called once per loop(), but only
  * when connected to WiFi and MQTT broker
  */
 void loopHandler() {
   // only publish sensor value if we've a new sample
-  if (published_light_time == last_light_time)
-    return;
-
-  luxNode.setProperty("lux").send(String(light));
-  luxNode.setProperty("time-last-update").send(String(last_light_time));
-  published_light_time = last_light_time;
+  if (published_light_time != last_light_time) {
+    luxNode.setProperty("lux").send(String(light));
+    luxNode.setProperty("time-last-update").send(String(last_light_time));
+    published_light_time = last_light_time;
+  }
+  if (published_temp_time != last_temp_time && !isnan(temp) && !isnan(humidity)) {
+    tempNode.setProperty("temp").send(String(temp));
+    tempNode.setProperty("time-last-update").send(String(last_temp_time));
+    humidityNode.setProperty("humidity").send(String(humidity));
+    humidityNode.setProperty("time-last-update").send(String(last_temp_time));
+    published_temp_time = last_temp_time;
+  }
 }
 
 /*
@@ -156,6 +193,8 @@ void loopHandler() {
 void loop() {
 
   now = time_base + millis()/1000;
+
   processLight();
+  processTH();
   Homie.loop();
 }
