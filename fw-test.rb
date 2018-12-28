@@ -19,12 +19,14 @@ require 'digest'
 #firmwareat = ""
 
 def listOfDevices()
+	ignorecount = 0;
 	returnHash = Hash.new
 	c = MQTT::Client.connect(@host)
 	c.subscribe('devices/#')
 	begin
-	while true do
-		Timeout::timeout(1) do
+	# if we get 5 "ignorable" messages in a row, assume we are done.
+	while ignorecount < 5 do
+		Timeout::timeout(2) do
 		    topic,message = c.get()
 		    #puts "#{topic}: #{message}"
 
@@ -40,6 +42,15 @@ def listOfDevices()
 
 		    # get the rest of the topic, including sub topics.
 		    deviceTopic = topic.sub(/devices\/#{device}\/(.*)/, '\1')
+
+		    # If this message is overwriting an existing message
+		    # then we are not getting new device information
+		    if returnHash[device][deviceTopic].nil?
+		    	ignorecount = 0
+		    else
+			ignorecount += 1
+		    end
+
 		    returnHash[device][deviceTopic] = message
 		end
 	end
