@@ -16,7 +16,7 @@
 #include <Homie.h>
 
 #define FIRMWARE_NAME     "env-sense"
-#define FIRMWARE_VERSION  "0.2.0"
+#define FIRMWARE_VERSION  "0.2.1"
 
 
 /*
@@ -104,8 +104,12 @@ void setup() {
   Serial << endl << endl;
 
   configureSensor();
-  dht.begin();
+  light = 0;
   last_light_time = 0;
+  dht.begin();
+  temp = 0.;
+  humidity = 0.;
+  last_temp_time = 0;
 
   time_base = 0;
 
@@ -175,12 +179,14 @@ void loopHandler() {
   // only publish sensor value if we've a new sample
   if (published_light_time != last_light_time) {
     luxNode.setProperty("lux").send(String(light));
-    luxNode.setProperty("time-last-update").send(String(last_light_time));
+    if (time_base)
+      luxNode.setProperty("time-last-update").send(String(last_light_time));
     published_light_time = last_light_time;
   }
   if (published_temp_time != last_temp_time && !isnan(temp) && !isnan(humidity)) {
     tempNode.setProperty("temp").send(String(temp));
-    tempNode.setProperty("time-last-update").send(String(last_temp_time));
+    if (time_base)
+      tempNode.setProperty("time-last-update").send(String(last_temp_time));
     humidityNode.setProperty("humidity").send(String(humidity));
     humidityNode.setProperty("time-last-update").send(String(last_temp_time));
     published_temp_time = last_temp_time;
@@ -195,6 +201,7 @@ void loop() {
   now = time_base + millis()/1000;
 
   processLight();
+  if (0) // XXX
   processTH();
   Homie.loop();
 }
