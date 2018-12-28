@@ -63,13 +63,13 @@ def listOfDevices()
 	return returnHash
 end
 
-def otapublish(key, message)
+def otapublish(key, message, retain)
 	topic = 'devices/' + @dev + '/$implementation/ota/' + key
 	m = (/firmware/ =~ topic)? 'binary': message
 	puts "Publishing #{topic} <= #{m}" if @debug
 	begin
 		MQTT::Client.connect(@host) do |c|
-			c.publish(topic, message, true)
+			c.publish(topic, message, retain)
 		end
 
 	rescue Exception => bang
@@ -83,8 +83,8 @@ end
 # Get rid of old persistent OTA messages
 #
 def clean_up
-	otapublish(@firmwareat, "")
-	otapublish('status', "")
+	otapublish(@firmwareat, "", true) unless @firmwareat.nil?
+	otapublish('status', "", true)
 end
 
 #
@@ -99,7 +99,7 @@ def publish_firmware(checksum)
 		end
 		firmware = f.read(size)
 		@firmwareat = 'firmware/' + checksum.hexdigest
-		otapublish(@firmwareat, firmware)
+		otapublish(@firmwareat, firmware, false)
 	end
 end
 	
@@ -188,6 +188,14 @@ elsif not @dev.nil?
 	puts "\tname:\t\t#{allDevices[@dev]['$fw/name']}"
 	puts "\tversion:\t#{allDevices[@dev]['$fw/version']}"
 	puts "\tchecksum:\t#{allDevices[@dev]['$fw/checksum']}"
+	status = allDevices[@dev]['$implementation/ota/status']
+	if not status.nil?
+		puts "\tota status:\t#{status}"
+		if mode != 'F'
+			puts "\t\tUse -F to clear ota status"
+			exit
+		end
+	end
 end
 
 # If a filename was specified, get its MD5 checksum
@@ -258,6 +266,7 @@ end
 status = allDevices[@dev]['$implementation/ota/status']
 if not status.nil?
 	puts "Device #{@dev} is showing OTA status #{status} before OTA starts"
+	puts "Use -F to clear this"
 	exit
 end
 
