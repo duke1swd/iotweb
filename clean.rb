@@ -67,7 +67,11 @@ while true do
 	    topic,message = c.get()
 	    if topic.length > 0
 		puts "Topic length is #{topic.length}" if $debug
-		puts "#{topic}: #{message}"
+		if message.include?("firmware")
+			puts "#{topic}: (suppresed)"
+		else
+			puts "#{topic}: #{message}"
+		end
 		clean_topic(topic) if $mode == "f"
 		$limitxxx = $limitxxx - 1
 		if $limitxxx <= 0
