@@ -16,7 +16,7 @@
 #include <Homie.h>
 
 #define FIRMWARE_NAME     "env-sense"
-#define FIRMWARE_VERSION  "0.2.1"
+#define FIRMWARE_VERSION  "1.0.0"
 
 
 /*
@@ -25,7 +25,7 @@
 const int PIN_SCL = D1;
 const int PIN_SDA = D2;
 const int PIN_LED = 2;
-const int PIN_DHT = D3;
+const int PIN_DHT = D5;
 
 /*
  * Misc globals
@@ -99,7 +99,7 @@ void setupHandler() {
 void setup() {
   void loopHandler();
   Serial.begin(115200);
-  Serial.println("Lux sensor");
+  Serial.println("Lux/Temp/RH sensors");
   Serial.println(FIRMWARE_VERSION);
   Serial << endl << endl;
 
@@ -153,12 +153,15 @@ static float getHumidity()
   return dht.readHumidity();
 }
 
-static void processLight()
+// returns true if we actually read the sensor
+static bool processLight()
 {
   if (now - last_light_time >= light_period) {
     light = getLight();
     last_light_time = now;
+    return true;
   }
+  return false;
 }
 
 static void processTH()
@@ -200,8 +203,9 @@ void loop() {
 
   now = time_base + millis()/1000;
 
-  processLight();
-  if (0) // XXX
-  processTH();
+  // because these sensors take a while to read never read
+  // both of them on the same iteration of loop().
+  if (!processLight())
+    processTH();
   Homie.loop();
 }
