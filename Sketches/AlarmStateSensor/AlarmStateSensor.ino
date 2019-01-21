@@ -16,11 +16,15 @@
 //  Hold Pin D6 low at power up to enable debug
 //  Hold an input pin low to light up the corresponding LED
 //
+// Version 0.4 adds the state machine to decode what pin 18 is telling us.
+//  It also uses this information to calculate the cooked alarm
+//  state.
+//
 
 #include <Homie.h>
 
 #define FIRMWARE_NAME     "alarm-state"
-#define FIRMWARE_VERSION  "0.4.1"
+#define FIRMWARE_VERSION  "0.4.5"
 
 // Note: all of these LEDs are on when LOW, off when HIGH
 static const uint8_t PIN_LED0 = D4; // the WeMos blue LED
@@ -46,6 +50,7 @@ const unsigned char blink_start = 11;  // set to 2*n+1 for n blinks
 bool blinking;
 unsigned char alarm_status;
 unsigned char cooked_alarm_status;
+unsigned char last_smi;
 
 /*
  * Stuff for handling decode the alarm state
@@ -166,17 +171,19 @@ void setupHandler() {
 //
 unsigned char p18_current_state;
 long p18_state_enter_time;		// set to zero for no pending timeout
-const long p18_timeout = 1100;		// timeouts occur after 1.1 seconds
+const long p18_timeout = 1200;		// timeouts occur after 1.1 seconds
 
 void p18_reset()
 {
 	p18_current_state = S_idle_low;
 	p18_state_enter_time = 0;
+	last_smi = 0;
 }
 
 void p18_machine(unsigned char p18)
 {
 	long now;
+	unsigned char p;
 
 	if (p18)
 		p18 = 1;
@@ -186,7 +193,14 @@ void p18_machine(unsigned char p18)
 	    	p18 = 2;
 		p18_state_enter_time = 0;
 	}
-	p18_current_state = p18_state_table[p18_current_state][p18];
+	if (p18 != last_smi) {
+		last_smi = p18;
+		alarmStateNode.setProperty("smi").send(String(p18));
+	}
+	p = p18_state_table[p18_current_state][p18];
+	if (p != p18_current_state)
+		p18_state_enter_time = now;
+	p18_current_state = p;
 }
 
 //
@@ -200,25 +214,29 @@ void sensor() {
   p17 = !digitalRead(PIN_INPUT17);
   p18 = !digitalRead(PIN_INPUT18);
 
-  // Send the raw alarm pin status to Homie
+  // Get the raw status`
   s = 0;
   if (p17)
     s = 2;
   if (p18)
     s++;
 
-  if (s != alarm_status) {
-    alarm_status = s;
-    alarmStateNode.setProperty("rawstate").send(String(alarm_status));
-  }
-
-  // Calculate the cooked alarm status and send it to Homie
+  // Calculate the cooked alarm status
   if (!p17) {
   	p18_reset();
 	c = P_Disarmed;
   } else {
   	p18_machine(p18);
 	c = p18_state_output[p18_current_state];
+  }
+
+  // Now send the information to homie.
+  // Don't do this until after running the state machine
+  // or the timing may get messed up
+
+  if (s != alarm_status) {
+    alarm_status = s;
+    alarmStateNode.setProperty("rawstate").send(String(alarm_status));
   }
 
   if (c != cooked_alarm_status) {
@@ -297,6 +315,7 @@ void setup() {
   lightNode.advertise("on").settable(lightOnHandler);
   alarmStateNode.advertise("state");
   alarmStateNode.advertiseRange("rawstate", 0, 3);
+  alarmStateNode.advertiseRange("smi", 0, 2);
   Homie.disableLedFeedback(); // we want to control the LED
   
   Homie.setup();
