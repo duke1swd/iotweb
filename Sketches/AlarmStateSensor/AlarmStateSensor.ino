@@ -20,7 +20,7 @@
 #include <Homie.h>
 
 #define FIRMWARE_NAME     "alarm-state"
-#define FIRMWARE_VERSION  "0.3.3"
+#define FIRMWARE_VERSION  "0.4.1"
 
 // Note: all of these LEDs are on when LOW, off when HIGH
 static const uint8_t PIN_LED0 = D4; // the WeMos blue LED
@@ -40,14 +40,82 @@ static const uint8_t PIN_DEBUG = D6;  // high for normal mode, low for debug mod
 // Blink control.
 // State variables for the built-in LED
 unsigned char blink_state;
-int blink_last_time;
-const int blink_time = 100; // milliseconds; half-period
+long blink_last_time;
+const long blink_time = 100; // milliseconds; half-period
 const unsigned char blink_start = 11;  // set to 2*n+1 for n blinks
 bool blinking;
 unsigned char alarm_status;
+unsigned char cooked_alarm_status;
+
+/*
+ * Stuff for handling decode the alarm state
+ */
+
+// Possible states of the P18 decoder
+#define	S_idle_low	0
+#define	S_h1		1
+#define	S_h2		2
+#define	S_h3		3
+#define	S_h4		4
+#define	S_two_sec	5
+#define	S_high		6
+#define	S_l1		7
+#define	S_l2		8
+#define	S_l3		9
+#define	N_STATES	10
+
+// Possible cooked states
+#define	P_Disarmed	0
+#define	P_Off		1
+#define	P_High		2
+#define	P_Pulse		3
+#define	P_Two_Sec	4
+
+// If P17 is on, these are the alarm state names
+const char *cooked_alarm_states[] = {
+	"disarmed",
+	"armed-stay",
+	"alarmed-burglar",
+	"alarmed-fire",
+	"armed-away",
+};
+
+/*
+ * P18 decoder state machine.  Input is [current_state][i] where
+ 	i = 0 when p18 is 0
+	i = 1 when p18 is 1
+	i = 2 when timeout happens
+ */
+const unsigned char p18_state_table[N_STATES][3] = {
+	{S_idle_low, S_h1, S_idle_low},		// S_idle_low
+	{S_h2, S_h1, S_h4},			// S_h1
+	{S_h2, S_h3, S_idle_low},		// S_h2
+	{S_h2, S_h3, S_h4},			// S_h3
+	{S_two_sec, S_h4, S_high},		// S_h4
+	{S_two_sec, S_h1, S_two_sec},		// S_two_sec
+	{S_l1, S_high, S_high},			// S_high
+	{S_l1, S_l2, S_idle_low},		// S_l1
+	{S_h2, S_l2, S_l3},			// S_l2
+	{S_two_sec, S_l3, S_high},		// S_l3
+};
+
+// P18 state output values
+const unsigned char p18_state_output[N_STATES] = {
+	P_Off,
+	P_Two_Sec,
+	P_Pulse,
+	P_Pulse,
+	P_Two_Sec,
+	P_Two_Sec,
+	P_High,
+	P_High,
+	P_High,
+	P_High,
+};
+
 
 bool debug_mode;
-int last_debug_report_time;
+long last_debug_report_time;
 
 // The LED is an output node, provides external control of the blue LED on the Wemos D1
 HomieNode lightNode("led", "switch");   // ID is "led", which is unique within this device.  Type is "switch"
@@ -86,10 +154,39 @@ bool lightOnHandler(const HomieRange& range, const String& value) {
 void setupHandler() {
   blink_state = 0;
   alarm_status = 0xff;
+  cooked_alarm_status = 0xff;
   // turn off all LEDs
   digitalWrite(PIN_LED0, LOW);
   digitalWrite(PIN_LED1, HIGH);
   digitalWrite(PIN_LED2, HIGH);
+}
+
+//
+// P18 state machine stuff
+//
+unsigned char p18_current_state;
+long p18_state_enter_time;		// set to zero for no pending timeout
+const long p18_timeout = 1100;		// timeouts occur after 1.1 seconds
+
+void p18_reset()
+{
+	p18_current_state = S_idle_low;
+	p18_state_enter_time = 0;
+}
+
+void p18_machine(unsigned char p18)
+{
+	long now;
+
+	if (p18)
+		p18 = 1;
+	now = millis();
+	if (p18_state_enter_time > 0 &&
+	    now - p18_state_enter_time >= p18_timeout) {
+	    	p18 = 2;
+		p18_state_enter_time = 0;
+	}
+	p18_current_state = p18_state_table[p18_current_state][p18];
 }
 
 //
@@ -98,10 +195,12 @@ void setupHandler() {
 //
 void sensor() {
   unsigned char p17, p18;
-  unsigned char s;
+  unsigned char s, c;
 
   p17 = !digitalRead(PIN_INPUT17);
   p18 = !digitalRead(PIN_INPUT18);
+
+  // Send the raw alarm pin status to Homie
   s = 0;
   if (p17)
     s = 2;
@@ -111,7 +210,20 @@ void sensor() {
   if (s != alarm_status) {
     alarm_status = s;
     alarmStateNode.setProperty("rawstate").send(String(alarm_status));
-    alarmStateNode.setProperty("state").send("unknown");
+  }
+
+  // Calculate the cooked alarm status and send it to Homie
+  if (!p17) {
+  	p18_reset();
+	c = P_Disarmed;
+  } else {
+  	p18_machine(p18);
+	c = p18_state_output[p18_current_state];
+  }
+
+  if (c != cooked_alarm_status) {
+    alarmStateNode.setProperty("state").send(cooked_alarm_states[c]);
+    cooked_alarm_status = c;
   }
 }
 
