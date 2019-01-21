@@ -20,7 +20,7 @@
 #include <Homie.h>
 
 #define FIRMWARE_NAME     "alarm-state"
-#define FIRMWARE_VERSION  "0.3.2"
+#define FIRMWARE_VERSION  "0.3.3"
 
 // Note: all of these LEDs are on when LOW, off when HIGH
 static const uint8_t PIN_LED0 = D4; // the WeMos blue LED
@@ -33,7 +33,7 @@ static const uint8_t PIN_LED2 = D7; // another white status LED
 // The alarm programming has to be figured out.  When it is, I'll
 // update this comment with what the pins actually mean.
 
-static const uint8_t PIN_INPUT17 = D0; // output #17 from alarm panel
+static const uint8_t PIN_INPUT17 = D2; // output #17 from alarm panel
 static const uint8_t PIN_INPUT18 = D5; // output #18 from alarm panel
 static const uint8_t PIN_DEBUG = D6;  // high for normal mode, low for debug mode.
 
@@ -87,7 +87,7 @@ void setupHandler() {
   blink_state = 0;
   alarm_status = 0xff;
   // turn off all LEDs
-  digitalWrite(PIN_LED0, HIGH);
+  digitalWrite(PIN_LED0, LOW);
   digitalWrite(PIN_LED1, HIGH);
   digitalWrite(PIN_LED2, HIGH);
 }
@@ -127,9 +127,9 @@ void blinkHandler() {
   }
   
   if ((blink_state & 1) == 0)
-    digitalWrite(PIN_LED0, HIGH);  // turn it off
+    digitalWrite(PIN_LED0, LOW);  // turn it off
   else
-    digitalWrite(PIN_LED0, LOW); // turn it on
+    digitalWrite(PIN_LED0, HIGH); // turn it on
 
   if (blink_state > 0 && millis() - blink_last_time > blink_time) {
     blink_last_time += blink_time;
@@ -157,10 +157,11 @@ void setup() {
 
   // turn on all LEDs for at least 2 seconds
   // once we enter normal operation setupHandler() will turn these back off
-  digitalWrite(PIN_LED0, LOW);
+  digitalWrite(PIN_LED0, HIGH);
   digitalWrite(PIN_LED1, LOW);
   digitalWrite(PIN_LED2, LOW);
   delay(2000);
+  digitalWrite(PIN_LED0, LOW);
 
   // set up the serial port
   Serial.begin(74880);
@@ -193,6 +194,9 @@ void setup() {
 void loop() {
   int v;
   
+  /*
+   * DEBUG MODE
+   */
   if (debug_mode) {
     if (millis() - last_debug_report_time > 1000) {
       last_debug_report_time = millis();
@@ -213,5 +217,9 @@ void loop() {
       digitalWrite(PIN_LED2, LOW);
     return;
   }
+
+  /*
+   * NORMAL MODE
+   */
   Homie.loop();
 }
