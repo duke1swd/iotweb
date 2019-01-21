@@ -24,7 +24,7 @@
 #include <Homie.h>
 
 #define FIRMWARE_NAME     "alarm-state"
-#define FIRMWARE_VERSION  "0.4.5"
+#define FIRMWARE_VERSION  "0.4.9"
 
 // Note: all of these LEDs are on when LOW, off when HIGH
 static const uint8_t PIN_LED0 = D4; // the WeMos blue LED
@@ -50,7 +50,6 @@ const unsigned char blink_start = 11;  // set to 2*n+1 for n blinks
 bool blinking;
 unsigned char alarm_status;
 unsigned char cooked_alarm_status;
-unsigned char last_smi;
 
 /*
  * Stuff for handling decode the alarm state
@@ -171,13 +170,12 @@ void setupHandler() {
 //
 unsigned char p18_current_state;
 long p18_state_enter_time;		// set to zero for no pending timeout
-const long p18_timeout = 1200;		// timeouts occur after 1.1 seconds
+const long p18_timeout = 1500;		// timeouts occur after 1.1 seconds
 
 void p18_reset()
 {
 	p18_current_state = S_idle_low;
 	p18_state_enter_time = 0;
-	last_smi = 0;
 }
 
 void p18_machine(unsigned char p18)
@@ -192,10 +190,6 @@ void p18_machine(unsigned char p18)
 	    now - p18_state_enter_time >= p18_timeout) {
 	    	p18 = 2;
 		p18_state_enter_time = 0;
-	}
-	if (p18 != last_smi) {
-		last_smi = p18;
-		alarmStateNode.setProperty("smi").send(String(p18));
 	}
 	p = p18_state_table[p18_current_state][p18];
 	if (p != p18_current_state)
@@ -315,7 +309,6 @@ void setup() {
   lightNode.advertise("on").settable(lightOnHandler);
   alarmStateNode.advertise("state");
   alarmStateNode.advertiseRange("rawstate", 0, 3);
-  alarmStateNode.advertiseRange("smi", 0, 2);
   Homie.disableLedFeedback(); // we want to control the LED
   
   Homie.setup();
