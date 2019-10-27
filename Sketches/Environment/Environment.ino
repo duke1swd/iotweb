@@ -16,7 +16,7 @@
 #include <Homie.h>
 
 #define FIRMWARE_NAME     "env-sense"
-#define FIRMWARE_VERSION  "1.0.0"
+#define FIRMWARE_VERSION  "1.0.7"
 
 
 /*
@@ -30,7 +30,7 @@ const int PIN_DHT = D5;
 /*
  * Misc globals
  */
-long time_base;
+volatile long time_base;
 long now;
 long last_light_time;
 long published_light_time;
@@ -157,6 +157,7 @@ static float getHumidity()
 static bool processLight()
 {
   if (now - last_light_time >= light_period) {
+/*XXX*/if (1) {delay(240);light = 998;}else	// test to see if the delay function is the culprit
     light = getLight();
     last_light_time = now;
     return true;
@@ -201,7 +202,17 @@ void loopHandler() {
  */
 void loop() {
 
+#ifdef maybe_a_bug
   now = time_base + millis()/1000;
+#else
+  long t;
+
+  t = millis()/1000;
+  noInterrupts();
+  now = time_base + t;
+  interrupts();
+#endif
+
 
   // because these sensors take a while to read never read
   // both of them on the same iteration of loop().
