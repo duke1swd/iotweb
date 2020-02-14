@@ -16,7 +16,7 @@
 #include <Homie.h>
 
 #define FIRMWARE_NAME     "env-sense"
-#define FIRMWARE_VERSION  "1.0.7"
+#define FIRMWARE_VERSION  "1.0.10"
 
 
 /*
@@ -35,7 +35,7 @@ long now;
 long last_light_time;
 long published_light_time;
 int light;
-const long light_period = 10;	// sample every 10 seconds
+const long light_period = 3;	// sample every 10 seconds
 float temp;
 float humidity;
 long last_temp_time;
@@ -157,7 +157,7 @@ static float getHumidity()
 static bool processLight()
 {
   if (now - last_light_time >= light_period) {
-/*XXX*/if (1) {delay(240);light = 998;}else	// test to see if the delay function is the culprit
+/*XXX*/if (1) {delay(30); light = 995;}else	// test to see if the delay function is the culprit
     light = getLight();
     last_light_time = now;
     return true;
