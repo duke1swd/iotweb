@@ -19,6 +19,7 @@ unsigned long connecttime;
 unsigned long now, previous_now;
 unsigned char ToDKnown;		// True if we know the ToD.
 unsigned long ToDBase;		// Number of seconds since epoc at boot or last wrap of millis.
+unsigned char debug;
 
 #define	WRAP_TIME	(4294967ul)	// (2^32/1000) Number of seconds it takes millis() to wrap.
 #define	POLL_PERIOD	10		// ten seconds for now.  After debug complete increase to 5 minutes.
@@ -40,14 +41,17 @@ unsigned char wifiState;
 #ifdef HOME
 const char wifiname[] = "DanielIOT";
 const char wifipass[] = HOMEPASS;
-const char servername[] = "192.168.1.13";
+const char servername[] = {192, 168, 1, 13};
 #endif
 #ifdef LAKE
 const char wifiname[] = "BesideThePoint";
 const char wifipass[] = LAKEPASS;
-const char servername[] = "ssh.swdaniel.com";
+//const char servername[] = {192, 168, 11, 138};
+//const char servername[] = {192, 168, 11, 1};
+String servername = String("http://192.168.11.1");
 #endif
-const int serverport = 1884;
+//const int serverport = 1884;
+const int serverport = 80;
 
 WiFiClient client;
 unsigned char poll_home_state;
@@ -69,6 +73,7 @@ void setup() {
   connecttime = 0;
   now = millis();
   ToDKnown = 0;
+  debug = 1;
 }
 
 /*
@@ -170,12 +175,18 @@ void loop() {
     case 0:
       if (dialog_number == 0 && future(poll_home))
         break;	// not yet time to poll the home server
+      if (debug)
+        Serial.println("Connecting to server");
       if (client.connect(servername, serverport)) {
         poll_home_state = 1;
         poll_timeout = mark(POLL_TIMEOUT);
+        if (debug)
+          Serial.println("Connection succeeded");
       } else {
         // If we cannot connect, try again later
         error = ERROR_RESET;
+        if (debug)
+          Serial.println("Connection failed");
       }
       break;
     // State 1: connection live, send message 1
