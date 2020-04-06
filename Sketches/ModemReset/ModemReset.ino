@@ -46,12 +46,9 @@ const char servername[] = {192, 168, 1, 13};
 #ifdef LAKE
 const char wifiname[] = "BesideThePoint";
 const char wifipass[] = LAKEPASS;
-//const char servername[] = {192, 168, 11, 138};
-//const char servername[] = {192, 168, 11, 1};
-String servername = String("http://192.168.11.1");
+const char * servername = "192.168.11.138";
 #endif
-//const int serverport = 1884;
-const int serverport = 80;
+const int serverport = 1884;
 
 WiFiClient client;
 unsigned char poll_home_state;
