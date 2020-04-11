@@ -36,12 +36,12 @@ unsigned char wifiState;
 #define	ERROR_NOCLOSE	2
 #define	ERROR_RESET	3
 
-// #define HOME
-#define LAKE
+#define HOME
+//#define LAKE
 #ifdef HOME
 const char wifiname[] = "DanielIOT";
 const char wifipass[] = HOMEPASS;
-const char servername[] = {192, 168, 1, 13};
+const char servername[] = "192.168.1.13";
 #endif
 #ifdef LAKE
 const char wifiname[] = "BesideThePoint";
@@ -202,7 +202,7 @@ void loop() {
       // We are connected, start the dialog
       switch (dialog_number) {
         case 0:
-          client.print(String("reset,stillwater,modem,314159"));
+          client.print(String("reset,stillwater,modem,314159\n"));
       }
       poll_home_state = 2;
       poll_timeout = mark(SERVER_TIMEOUT);
