@@ -202,6 +202,8 @@ void loop() {
       // We are connected, start the dialog
       switch (dialog_number) {
         case 0:
+          if (debug)
+            Serial.println("sending");
           client.print(String("reset,stillwater,modem,314159\n"));
       }
       poll_home_state = 2;
@@ -209,7 +211,7 @@ void loop() {
       break;
     // State 2: Wait for a response
     case 2:
-      if (!client.connected()) {
+      if (client.available() == 0 && !client.connected()) {
         // poll failed.
         error = ERROR_CLOSE;
         mylog("no response");
@@ -220,9 +222,11 @@ void loop() {
         mylog("server response timeout");
         break;
       }
-      if (!client.available())
+      if (client.available() == 0)
         break;	// stay in this state and wait for stuff from client
 
+      if (debug)
+        Serial.println("reading");
       line = client.readStringUntil('\n');
       client.stop();
 
@@ -267,6 +271,7 @@ void loop() {
           ToDKnown = 1;
           poll_home_state = 0;
           dialog_number++;
+          mylog("got TOD");
           break;
         case 1:
 
