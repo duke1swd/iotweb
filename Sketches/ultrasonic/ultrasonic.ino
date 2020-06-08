@@ -5,30 +5,48 @@
 #define TOGGLE_PIN D5
 
 
-#define OSC_FLIP  35    // flip state every 25 uSec to generate 20KHz 50% duty cycle wave
 
 unsigned long next_flip;
+unsigned long on_time, off_time;
 unsigned char state;
 
 void setup() {
+  String s;
+  unsigned long k, p;
+
   pinMode(LED, OUTPUT);
   pinMode(TOGGLE_PIN, OUTPUT);
-  
+
   Serial.begin(9600);
-  Serial.println("Hello World!");
-  
+  do {
+    Serial.println("Enter KHz");
+    s = Serial.readStringUntil('\n');
+    k = s.toInt();
+  } while (k <= 0 || k > 60);
+  Serial.print("Setting KHz to ");
+  Serial.println(k);
+
+  p = 1000 / k; // the period in microseconds
+  on_time = p / 2;
+  off_time = p - on_time;
+  Serial.print("On time: ");
+  Serial.println(on_time);
+  Serial.print("  Off time: ");
+  Serial.println(off_time);
+
   state = 0;
-  next_flip = micros() + OSC_FLIP;
+  next_flip = micros() + off_time;
 }
 
 void loop() {
   if (micros() > next_flip) {
-    next_flip += OSC_FLIP;
     if (state) {
       state = 0;
+      next_flip += off_time;
       digitalWrite(TOGGLE_PIN, LOW);
     } else {
       state = 1;
+      next_flip += on_time;
       digitalWrite(TOGGLE_PIN, HIGH);
     }
   }
