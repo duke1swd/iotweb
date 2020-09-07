@@ -8,8 +8,8 @@
  */
 #include <Homie.h>
 
-#define FIRMWARE_NAME     "led-control-Wemos"
-#define FIRMWARE_VERSION  "0.1.2"
+#define FIRMWARE_NAME     "Simple LED Control"
+#define FIRMWARE_VERSION  "0.1.1"
 
 /*
  * IO Pins
