@@ -9,7 +9,7 @@
 #include <Homie.h>
 
 #define FIRMWARE_NAME     "Simple LED Control"
-#define FIRMWARE_VERSION  "0.1.3"
+#define FIRMWARE_VERSION  "0.1.4"
 
 /*
  * IO Pins
@@ -53,7 +53,7 @@ void setup() {
   Serial.begin(115200);
   Serial << endl << endl;
   pinMode(PIN_LED, OUTPUT);
-  digitalWrite(PIN_LED, LOW);
+  digitalWrite(PIN_LED, LED_OFF_VALUE);
 
   Homie_setFirmware(FIRMWARE_NAME, FIRMWARE_VERSION);
 
