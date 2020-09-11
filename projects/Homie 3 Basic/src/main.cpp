@@ -9,12 +9,14 @@
 #include <Homie.h>
 
 #define FIRMWARE_NAME     "Simple LED Control"
-#define FIRMWARE_VERSION  "0.1.1"
+#define FIRMWARE_VERSION  "0.1.3"
 
 /*
  * IO Pins
  */
 const int PIN_LED = 2;
+#define	LED_ON_VALUE	LOW		// pull the pin low to turn on the LED
+#define	LED_OFF_VALUE	HIGH
 
 /*
  * Global State
@@ -27,7 +29,7 @@ bool ledOnHandler(const HomieRange& range, const String& value) {
   if (value != "true" && value != "false") return false;
 
   on = (value == "true");
-  digitalWrite(PIN_LED, on ? HIGH : LOW);
+  digitalWrite(PIN_LED, on ? LED_ON_VALUE : LED_OFF_VALUE);
   ledNode.setProperty("on").send(value);
   Homie.getLogger() << "LED is " << (on ? "on" : "off") << endl;
 
