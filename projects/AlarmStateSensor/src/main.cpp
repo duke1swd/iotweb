@@ -20,11 +20,14 @@
 //  It also uses this information to calculate the cooked alarm
 //  state.
 //
+// Version 0.5 is unchanged from 0.4, but moved to the homie 3 convention
+//  and moved from Arduino IDE to platformio.
+//
 
 #include <Homie.h>
 
 #define FIRMWARE_NAME     "alarm-state"
-#define FIRMWARE_VERSION  "0.4.9"
+#define FIRMWARE_VERSION  "0.5.0"
 
 // Note: all of these LEDs are on when LOW, off when HIGH
 static const uint8_t PIN_LED0 = D4; // the WeMos blue LED
