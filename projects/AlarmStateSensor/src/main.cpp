@@ -125,10 +125,10 @@ bool debug_mode;
 long last_debug_report_time;
 
 // The LED is an output node, provides external control of the blue LED on the Wemos D1
-HomieNode lightNode("led", "switch");   // ID is "led", which is unique within this device.  Type is "switch"
+HomieNode lightNode("led", "led", "switch");   // ID is "led", which is unique within this device.  Type is "switch"
 
 // The ALARM is an input node, which tells the world the state of the alarm panel.
-HomieNode alarmStateNode("alarm-state", "sensor");
+HomieNode alarmStateNode("alarm-state", "alarm-state", "sensor");
 
 //
 // When you turn the LED on, it blinks for awhile, then turns off.
