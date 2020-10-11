@@ -22,6 +22,7 @@
 //
 // Version 0.5 is unchanged from 0.4, but moved to the homie 3 convention
 //  and moved from Arduino IDE to platformio.
+//  Also, stopped (inappropriately) ising a range node.
 //
 
 #include <Homie.h>
@@ -309,9 +310,15 @@ void setup() {
   Homie.setSetupFunction(setupHandler).setLoopFunction(loopHandler);
 
   // register the LED's control function
-  lightNode.advertise("on").settable(lightOnHandler);
-  alarmStateNode.advertise("state");
-  alarmStateNode.advertiseRange("rawstate", 0, 3);
+  lightNode.advertise("on").settable(lightOnHandler)
+                         .setName("LED On")
+			 .setDatatype("boolean");
+  alarmStateNode.advertise("state")
+                         .setName("Cooked State")
+			 .setDatatype("string");
+  alarmStateNode.advertise("rawstate")
+                         .setName("Raw State")
+			 .setDatatype("integer");
   Homie.disableLedFeedback(); // we want to control the LED
   
   Homie.setup();
