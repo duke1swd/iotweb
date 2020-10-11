@@ -28,7 +28,7 @@
 #include <Homie.h>
 
 #define FIRMWARE_NAME     "alarm-state"
-#define FIRMWARE_VERSION  "0.5.0"
+#define FIRMWARE_VERSION  "0.5.1"
 
 // Note: all of these LEDs are on when LOW, off when HIGH
 static const uint8_t PIN_LED0 = D4; // the WeMos blue LED
@@ -141,11 +141,13 @@ bool lightOnHandler(const HomieRange& range, const String& value) {
     blink_state = blink_start;
     blink_last_time = millis();
     blinking = true;
+    digitalWrite(PIN_LED0, LOW); // turn on
     digitalWrite(PIN_LED1, LOW); // turn on
     digitalWrite(PIN_LED2, LOW); // turn on
   } else {
     blink_state = 0;
     blinking = false;
+    digitalWrite(PIN_LED0, HIGH); // turn off
     digitalWrite(PIN_LED1, HIGH); // turn off
     digitalWrite(PIN_LED2, HIGH); // turn off
   }
@@ -164,7 +166,7 @@ void setupHandler() {
   alarm_status = 0xff;
   cooked_alarm_status = 0xff;
   // turn off all LEDs
-  digitalWrite(PIN_LED0, LOW);
+  digitalWrite(PIN_LED0, HIGH);
   digitalWrite(PIN_LED1, HIGH);
   digitalWrite(PIN_LED2, HIGH);
 }
@@ -250,14 +252,18 @@ void blinkHandler() {
       lightNode.setProperty("on").send("false");
       lightNode.setProperty("on/set").send("false");
       blinking = false;
+      digitalWrite(PIN_LED0, HIGH); // turn off
       digitalWrite(PIN_LED1, HIGH); // turn off
       digitalWrite(PIN_LED2, HIGH); // turn off
   }
   
-  if ((blink_state & 1) == 0)
-    digitalWrite(PIN_LED0, LOW);  // turn it off
-  else
-    digitalWrite(PIN_LED0, HIGH); // turn it on
+  if ((blink_state & 1) == 0) {
+    digitalWrite(PIN_LED1, HIGH);  // turn it off
+    digitalWrite(PIN_LED2, HIGH);  // turn it off
+  } else {
+    digitalWrite(PIN_LED1, LOW); // turn it on
+    digitalWrite(PIN_LED2, LOW); // turn it on
+  }
 
   if (blink_state > 0 && millis() - blink_last_time > blink_time) {
     blink_last_time += blink_time;
@@ -285,11 +291,11 @@ void setup() {
 
   // turn on all LEDs for at least 2 seconds
   // once we enter normal operation setupHandler() will turn these back off
-  digitalWrite(PIN_LED0, HIGH);
+  digitalWrite(PIN_LED0, LOW);
   digitalWrite(PIN_LED1, LOW);
   digitalWrite(PIN_LED2, LOW);
   delay(2000);
-  digitalWrite(PIN_LED0, LOW);
+  digitalWrite(PIN_LED0, HIGH);
 
   // set up the serial port
   Serial.begin(74880);
