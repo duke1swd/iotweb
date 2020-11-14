@@ -1,2 +1,2 @@
 #!/bin/sh
-mosquitto_pub -r -t 'devices/led0001/local-led/on/set' -m 'true'
+mosquitto_pub -r -t 'devices/led-0001/led/on/set' -m '10'

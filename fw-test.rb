@@ -257,7 +257,7 @@ if checksum == allDevices[@dev]['$fw/checksum']
 	exit
 end
 
-if allDevices[@dev]['$online'] != "true"
+if allDevices[@dev]['$online'] != "true" and allDevices[@dev]['$state'] != "ready"
 	puts "Device #{@dev} is not online"
 	exit
 end
