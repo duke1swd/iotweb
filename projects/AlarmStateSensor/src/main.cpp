@@ -28,7 +28,7 @@
 #include <Homie.h>
 
 #define FIRMWARE_NAME     "alarm-state"
-#define FIRMWARE_VERSION  "0.5.1"
+#define FIRMWARE_VERSION  "0.5.2"
 
 // Note: all of these LEDs are on when LOW, off when HIGH
 static const uint8_t PIN_LED0 = D4; // the WeMos blue LED
