@@ -9,6 +9,8 @@
  * Implements 3 homie sensors
  *
  * Major version 2 of this code upgrades to Homie v3
+ * 2.0.1: turn lux sensor on, begin debugging this
+ * 2.0.2: temp and hummidity less often
  */
 
 #include <Adafruit_Sensor.h>
@@ -18,7 +20,7 @@
 #include <Homie.h>
 
 #define FIRMWARE_NAME     "env-sense"
-#define FIRMWARE_VERSION  "2.0.0"
+#define FIRMWARE_VERSION  "2.0.2"
 
 
 /*
@@ -37,12 +39,12 @@ long now;
 long last_light_time;
 long published_light_time;
 int light;
-const long light_period = 3;	// sample every 10 seconds
+const long light_period = 3;	// sample every 30 seconds XXX actually, for debugging do this more often
 float temp;
 float humidity;
 long last_temp_time;
 long published_temp_time;
-const long temp_period = 10;	// sample every 10 seconds
+const long temp_period = 30;	// sample every 30 seconds
 
 Adafruit_TSL2561_Unified tsl = Adafruit_TSL2561_Unified(TSL2561_ADDR_FLOAT, 12345);
 #define DHTTYPE DHT22   // DHT 22  (AM2302) type of temp/humidity sensor we are using
@@ -182,7 +184,7 @@ static float getHumidity()
 static bool processLight()
 {
   if (now - last_light_time >= light_period) {
-/*XXX*/if (1) {delay(30); light = 995;}else	// test to see if the delay function is the culprit
+/*XXX*/if (0) {delay(30); light = 995;}else	// test to see if the delay function is the culprit
     light = getLight();
     last_light_time = now;
     return true;
