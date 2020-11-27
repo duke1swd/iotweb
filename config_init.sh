@@ -11,3 +11,4 @@ sed < config.json > /tmp/config.json -e s/PASSWORD/$PASS/
 
 # Config the device!
 curl -X PUT http://192.168.123.1/config --header "Content-Type: application/json" -d @/tmp/config.json
+echo
