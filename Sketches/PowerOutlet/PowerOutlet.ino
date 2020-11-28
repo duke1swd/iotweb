@@ -22,7 +22,7 @@
 #include <Homie.h>
 
 #define FIRMWARE_NAME     "outlet-control-WiOn"
-#define FIRMWARE_VERSION  "0.3.7"
+#define FIRMWARE_VERSION  "1.0.2"
 
 /*
  * Reason codes.
@@ -72,10 +72,10 @@ long	time_last_change;	// When did we last change?
 Bounce debouncer = Bounce(); // Instantiate a Bounce object
 
 // This node is controls the relay
-HomieNode outletNode("outlet", "relay");
+HomieNode outletNode("outlet", "outlet", "relay");
 
 // This node watches the push button
-HomieNode buttonNode("button", "button");
+HomieNode buttonNode("button", "button", "button");
 
 /* convert integer to string */
 static char *l_to_s(long i)
@@ -172,11 +172,16 @@ void setupHandler() {
 }
 
 void setup() {
+  unsigned char i;
+
   void loopHandler();
   Serial.begin(115200);
-  Serial.println("WiOn Outlet Control");
-  Serial.println(FIRMWARE_VERSION);
-  Serial << endl << endl;
+  for (i = 0; i < 4; i++) {
+	Serial.println("WiOn Outlet Control");
+	Serial.println(FIRMWARE_VERSION);
+	Serial << endl << endl;
+	delay(1000);
+  }
 
   connected = false;
 
@@ -217,6 +222,7 @@ void setup() {
   Homie.disableLedFeedback(); // allow this code to handle LED
 
 
+  Serial.println("Calling Homie.setup");
   Homie.setup();
 }
 

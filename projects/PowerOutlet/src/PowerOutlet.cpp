@@ -22,7 +22,7 @@
 #include <Homie.h>
 
 #define FIRMWARE_NAME     "outlet-control-WiOn"
-#define FIRMWARE_VERSION  "1.0.0"
+#define FIRMWARE_VERSION  "1.0.2"
 
 /*
  * Reason codes.
@@ -166,17 +166,23 @@ bool buttonSetHandler(const HomieRange& range, const String& value) {
  */
 void setupHandler() {
   // turn on blue LED for 2 seconds
+/*xxx*/Serial.println("setupHandler");
   digitalWrite(PIN_LED, HIGH);
   led_can_change = millis() + 2000;
   connected = true;
 }
 
 void setup() {
+  unsigned char i;
+
   void loopHandler();
   Serial.begin(115200);
-  Serial.println("WiOn Outlet Control");
-  Serial.println(FIRMWARE_VERSION);
-  Serial << endl << endl;
+  for (i = 0; i < 4; i++) {
+	Serial.println(FIRMWARE_NAME);
+	Serial.println(FIRMWARE_VERSION);
+	Serial << endl << endl;
+	delay(1000);
+  }
 
   connected = false;
 
@@ -217,7 +223,9 @@ void setup() {
   Homie.disableLedFeedback(); // allow this code to handle LED
 
 
+  Serial.println("Calling Homie.setup");
   Homie.setup();
+  Serial.println("Return from  Homie.setup");
 }
 
 /*
