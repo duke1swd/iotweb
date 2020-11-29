@@ -22,7 +22,7 @@
 #include <Homie.h>
 
 #define FIRMWARE_NAME     "outlet-control-WiOn"
-#define FIRMWARE_VERSION  "1.0.2"
+#define FIRMWARE_VERSION  "1.0.4"
 
 /*
  * Reason codes.
@@ -173,16 +173,11 @@ void setupHandler() {
 }
 
 void setup() {
-  unsigned char i;
-
   void loopHandler();
   Serial.begin(115200);
-  for (i = 0; i < 4; i++) {
-	Serial.println(FIRMWARE_NAME);
-	Serial.println(FIRMWARE_VERSION);
-	Serial << endl << endl;
-	delay(1000);
-  }
+  Serial.println(FIRMWARE_NAME);
+  Serial.println(FIRMWARE_VERSION);
+  Serial << endl << endl;
 
   connected = false;
 
