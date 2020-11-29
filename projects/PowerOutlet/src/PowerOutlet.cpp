@@ -155,6 +155,7 @@ bool buttonSetHandler(const HomieRange& range, const String& value) {
   if (value != "true" && value != "false") return false;
 
   buttonState = (value == "true");
+  buttonNode.setProperty("button").send(value);
 
   return true;
 }
