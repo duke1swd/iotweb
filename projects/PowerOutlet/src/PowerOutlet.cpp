@@ -22,7 +22,7 @@
 #include <Homie.h>
 
 #define FIRMWARE_NAME     "outlet-control-WiOn"
-#define FIRMWARE_VERSION  "1.0.4"
+#define FIRMWARE_VERSION  "1.0.5"
 
 /*
  * Reason codes.
