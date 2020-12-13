@@ -1,0 +1,17 @@
+{
+  "name": "Simple LED Test",
+  "device_id": "led-0001",
+  "wifi": {
+    "ssid": "DanielIOT",
+    "password": "put password here"
+  },
+  "mqtt": {
+    "host": "192.168.2.13",
+    "port": 1883,
+    "base_topic": "devices/",
+    "auth": false
+  },
+  "ota": {
+    "enabled": true
+  }
+}

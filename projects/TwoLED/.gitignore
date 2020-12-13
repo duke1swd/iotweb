@@ -1,0 +1,4 @@
+.pio
+.vscode
+.travis.yml
+data/homie/config.json.password
