@@ -1,6 +1,6 @@
 {
-  "name": "Simple LED Test",
-  "device_id": "led-0001",
+  "name": "Two LED Controller",
+  "device_id": "led-0002",
   "wifi": {
     "ssid": "DanielIOT",
     "password": "put password here"

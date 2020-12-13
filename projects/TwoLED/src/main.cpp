@@ -14,8 +14,8 @@
  * IO Pins
  */
 const int PIN_LED = 2;
-const int PIN_LED_1 = D1;
-const int PIN_LED_2 = D2;
+const int PIN_LED_1 = D5;
+const int PIN_LED_2 = D6;
 #define	LED_ON_VALUE	LOW		// pull the pin low to turn on the LED
 #define	LED_OFF_VALUE	HIGH
 
