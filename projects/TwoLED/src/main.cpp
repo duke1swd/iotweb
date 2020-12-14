@@ -19,12 +19,10 @@ const int PIN_LED_2 = D6;
 #define	LED_ON_VALUE	LOW		// pull the pin low to turn on the LED
 #define	LED_OFF_VALUE	HIGH
 
-int ledpin[N_LEDS] = {PIN_LED, PIN_LED_1, PIN_LED_2};
-
 /*
- * Global State
+ * Per LED State Variables
  */
-int on[N_LEDS];	// 0 = off, 1 = on, 2 = blinking, 3 = pausing
+unsigned char on[N_LEDS];	// 0 = off, 1 = on, 2 = blinking, 3 = pausing
 #define	OFF		0
 #define	ON		1
 #define	BLINKING	2
@@ -33,11 +31,20 @@ int on[N_LEDS];	// 0 = off, 1 = on, 2 = blinking, 3 = pausing
 #define	BLINK_OFF_TIME	700
 #define	PAUSE_TIME	2000
 
-int blinks[N_LEDS]; // if blinking, how many to do
-int bcnt[N_LEDS]; // if blinking how many half phases left in string
+int ledpin[N_LEDS] = {PIN_LED, PIN_LED_1, PIN_LED_2};
+unsigned char pwm_capable[N_LEDS] = {0, 1, 1};
+unsigned char blinks[N_LEDS]; // if blinking, how many to do
+unsigned char bcnt[N_LEDS]; // if blinking how many half phases left in string
 int timeNext[N_LEDS]; // how many milliseconds until we do something
-
 unsigned long lastMillis[N_LEDS];
+unsigned char intensity[N_LEDS];
+unsigned char intensity_override[N_LEDS];
+unsigned char changed[N_LEDS];
+unsigned char state[N_LEDS];
+
+/*
+ * We have only one node, and it is a range node for the set of LEDs we control.
+ */
 
 HomieNode ledNode("led", "simpleLedControl", "switch", true, 0, N_LEDS-1);
 
@@ -47,8 +54,10 @@ HomieNode ledNode("led", "simpleLedControl", "switch", true, 0, N_LEDS-1);
  * If the value >= 10, LED is on.
  * Otherwise, emit that many blinks, pause, repeat.
  */
-bool ledOnHandler(const HomieRange& range, const String& value) {
+bool ledIntensityHandler(const HomieRange& range, const String& value) {
   int i;
+  unsigned long numericValue;
+
   if (!range.isRange)
 	  return false;				// If it isn't a range, then give up.
 
@@ -61,7 +70,77 @@ bool ledOnHandler(const HomieRange& range, const String& value) {
 	    return false;			// If the value field isn't a number, ignore it.
   }
 
-  unsigned long numericValue = value.toInt();	// OK, what is the value?
+  numericValue = value.toInt();			// OK, what is the value?
+  if (numericValue > 255)
+  	return false;				// can't be negative, as we rejected input with '-' in it.
+  
+  if (numericValue != intensity[i]) {
+  	intensity[i] = numericValue;
+	changed[i] = 1;
+	ledNode.setProperty("intensity").setRange(i).send(value);
+  }
+
+  return true;
+}
+
+/*
+ * The value coming in is an integer, represented as a string.
+ * If the value is <= 0, LED is off.
+ * If the value >= 10, LED is on.
+ * Otherwise, emit that many blinks, pause, repeat.
+ */
+bool ledIntensityOverrideHandler(const HomieRange& range, const String& value) {
+  int i;
+  unsigned long numericValue;
+
+  if (!range.isRange)
+	  return false;				// If it isn't a range, then give up.
+
+  if (range.index < 0 || range.index >= N_LEDS)
+  	return false;				// If range is out of range ignore it.
+  i = range.index;
+
+  for (byte j = 0; j < value.length(); j++) {
+    if (isDigit(value.charAt(j)) == false)
+	    return false;			// If the value field isn't a number, ignore it.
+  }
+
+  numericValue = value.toInt();			// OK, what is the value?
+  if (numericValue > 255)
+  	return false;				// can't be negative, as we rejected input with '-' in it.
+  
+  if (numericValue != intensity_override[i]) {
+  	intensity_override[i] = numericValue;
+	changed[i] = 1;
+	ledNode.setProperty("intensity-override").setRange(i).send(value);
+  }
+
+  return true;
+}
+
+/*
+ * The value coming in is an integer, represented as a string.
+ * If the value is <= 0, LED is off.
+ * If the value >= 10, LED is on.
+ * Otherwise, emit that many blinks, pause, repeat.
+ */
+bool ledOnHandler(const HomieRange& range, const String& value) {
+  int i;
+  unsigned long numericValue;
+
+  if (!range.isRange)
+	  return false;				// If it isn't a range, then give up.
+
+  if (range.index < 0 || range.index >= N_LEDS)
+  	return false;				// If range is out of range ignore it.
+  i = range.index;
+
+  for (byte j = 0; j < value.length(); j++) {
+    if (isDigit(value.charAt(j)) == false)
+	    return false;			// If the value field isn't a number, ignore it.
+  }
+
+  numericValue = value.toInt();			// OK, what is the value?
 
   timeNext[i] = 0;
   if (numericValue <= 0) {
@@ -75,7 +154,6 @@ bool ledOnHandler(const HomieRange& range, const String& value) {
 	timeNext[i] = BLINK_ON_TIME;
   }
 
-  //digitalWrite(PIN_LED, on ? LED_ON_VALUE : LED_OFF_VALUE);
   ledNode.setProperty("on").setRange(i).send(value);
   Homie.getLogger() << "LED is " << (on[i] ? "on" : "off") << endl;
   switch (on[i]) {
@@ -118,17 +196,59 @@ void setup() {
 	digitalWrite(ledpin[i], LED_OFF_VALUE);
 	on[i] = OFF;
 	lastMillis[i] = now;
+	intensity[i] = 255;
+	intensity_override[i] = 0;
+	changed[i] = 0;
+	state[i] = 0;
   }
 
   Homie_setFirmware(FIRMWARE_NAME, FIRMWARE_VERSION);
 
   ledNode.advertise("on").settable(ledOnHandler)
-                         .setName("LED On")
-			 .setDatatype("int");
+                        .setName("LED On")
+			.setDatatype("int");
+  ledNode.advertise("intensity").settable(ledIntensityHandler)
+  			.setName("LED Intensity")
+			.setDatatype("int");
+  ledNode.advertise("intensity-override").settable(ledIntensityOverrideHandler)
+  			.setName("LED Intensity Override")
+			.setDatatype("int");
 
   Homie.setSetupFunction(setupHandler).setLoopFunction(loopHandler);
 
   Homie.setup();
+}
+
+/*
+ * Turn on the LED at the right intensity.  If the led is
+ * already on and the intensity has not changed, do not make
+ * another call to analogWrite().
+
+ * Note that since driving the pin low turns on the LED we
+ * need to use 255-i as intensity i.
+
+ * If the LED is not on a PWM capable pin, just set it on.
+ */
+void ledOn(int i) {
+	unsigned char c_intensity;
+
+	c_intensity = intensity[i];
+	if (c_intensity < intensity_override[i])
+		c_intensity = intensity_override[i];
+	if (c_intensity < 1)
+		c_intensity = 1;
+
+	if (c_intensity == 255 || !pwm_capable[i]) 
+		digitalWrite(ledpin[i], LED_ON_VALUE);
+	else if (state[i] == 0 || changed[i])
+		analogWrite(ledpin[i], 255-c_intensity);
+
+	state[i] = 1;
+}
+
+void ledOff(int i) {
+	digitalWrite(ledpin[i], LED_OFF_VALUE);
+	state[i] = 0;
 }
 
 void loop() {
@@ -140,27 +260,28 @@ void loop() {
   for (i = 0; i < N_LEDS; i++) {
 	switch (on[i]) {
 	case ON:
-		digitalWrite(ledpin[i], LED_ON_VALUE);
+		ledOn(i);
 		break;
 	case OFF:
-		digitalWrite(ledpin[i], LED_OFF_VALUE);
+		ledOff(i);
 		break;
 	case BLINKING:
 		if (bcnt[i] & 1) 
-			digitalWrite(ledpin[i], LED_ON_VALUE);
+			ledOn(i);
 		else
-			digitalWrite(ledpin[i], LED_OFF_VALUE);
+			ledOff(i);
 		break;
 	case PAUSING:
-		digitalWrite(ledpin[i], LED_OFF_VALUE);
+		ledOff(i);
 		break;
 	default:
 		if (now & 0x400) 
-			digitalWrite(ledpin[i], LED_ON_VALUE);
+			ledOn(i);
 		else
-			digitalWrite(ledpin[i], LED_OFF_VALUE);
+			ledOff(i);
 		break;
 	}
+	changed[i] = 0;
 	if (timeNext[i] > 0 && lastMillis[i] != now) {
 		timeNext[i]--;
 		lastMillis[i] = now;
