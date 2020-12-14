@@ -241,7 +241,7 @@ void ledOn(int i) {
 	if (c_intensity == 255 || !pwm_capable[i]) 
 		digitalWrite(ledpin[i], LED_ON_VALUE);
 	else if (state[i] == 0 || changed[i])
-		analogWrite(ledpin[i], 255-c_intensity);
+		analogWrite(ledpin[i], 4*(255-c_intensity));
 
 	state[i] = 1;
 }
