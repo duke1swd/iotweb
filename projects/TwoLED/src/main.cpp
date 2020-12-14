@@ -6,7 +6,7 @@
 #include <Homie.h>
 
 #define FIRMWARE_NAME     "Two LED Control"
-#define FIRMWARE_VERSION  "0.1.0"
+#define FIRMWARE_VERSION  "0.2.0"
 
 #define	N_LEDS	3			// There are 3, the internal and 2 external
 
@@ -18,6 +18,11 @@ const int PIN_LED_1 = D5;
 const int PIN_LED_2 = D6;
 #define	LED_ON_VALUE	LOW		// pull the pin low to turn on the LED
 #define	LED_OFF_VALUE	HIGH
+
+unsigned char phase;			// Startup phasing.  Blinks some stuff before we go live.
+unsigned long phase_time;		// when did we last change phases.
+void ledOn(int i);
+void ledOff(int i);
 
 /*
  * Per LED State Variables
@@ -174,6 +179,8 @@ bool ledOnHandler(const HomieRange& range, const String& value) {
  * This code called once to set up, but only after completely connected.
  */
 void setupHandler() {
+	phase = 2;
+	phase_time = millis();
 }
 
 /*
@@ -201,6 +208,11 @@ void setup() {
 	changed[i] = 0;
 	state[i] = 0;
   }
+
+  // initiate the startup sequence
+  phase = 1;
+  for (i = 0; i < N_LEDS; i++) 
+  	ledOn(i);
 
   Homie_setFirmware(FIRMWARE_NAME, FIRMWARE_VERSION);
 
@@ -251,12 +263,37 @@ void ledOff(int i) {
 	state[i] = 0;
 }
 
+const int fade_rate = 8;		// 2.048 seconds
+
 void loop() {
   unsigned long now;
   int i;
 
   Homie.loop();
   now = millis();
+
+  // put on a little light display before we start real work.
+  switch (phase) {
+  	case 0:
+		break;
+	case 1:
+		return;
+	case 2:
+		if (now - phase_time < fade_rate * 256) {
+			ledOff(2);
+			ledOff(0);
+			i = 256 - (now - phase_time)/fade_rate;
+			if (intensity[1] != i)
+				changed[1] = 1;
+			intensity[1] = i;
+			ledOn(1);
+			changed[1] = 0;
+			return;
+		}
+		phase = 0;
+		break;
+  }
+
   for (i = 0; i < N_LEDS; i++) {
 	switch (on[i]) {
 	case ON:
